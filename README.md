@@ -2,21 +2,21 @@ This Repo is for synthetic data generation for layerwise convolutional neural ne
 
 ## Make Baseline Experiments
 
-- [] training with data
-- [] training with dataset that overlaps classes
-- [] training with dataset that minimally overlaps classes
-- [] training on random generated images
+- [ ] training with data
+- [ ] training with dataset that overlaps classes
+- [ ] training with dataset that minimally overlaps classes
+- [ ] training on random generated images
 
-##Experiments
+## Experiments
 
 - [x] naive maximization
-- [] augmentation tricks
-- [] diversity layerwise
-- [] gradient decent (what not to activate for)
-- [] gan?
+- [ ] augmentation tricks
+- [ ] diversity layerwise
+- [ ] gradient decent (what not to activate for)
+- [ ] gan?
 
-##Related Work
+## Related Work
 
-- [] Layer/Blockwise comrpession
-- [] semi supervised training
-- [] GAN knowledge distillation
+- [ ] Layer/Blockwise comrpession
+- [ ] semi supervised training
+- [ ] GAN knowledge distillation
