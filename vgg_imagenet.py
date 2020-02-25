@@ -24,13 +24,13 @@ print("processed")
 
 
 #%%
-IMAGE_SIZE = (224, 224)
-TRAIN_SIZE = 50000
-VALIDATION_SIZE = 10000
-BATCH_SIZE_PER_GPU = 64
-global_batch_size = (BATCH_SIZE_PER_GPU * 1)
-NUM_CLASSES = 10
 EPOCHS = 64
+IMAGE_SIZE = (224, 224)
+TRAIN_SIZE = 1281167
+VALIDATION_SIZE = 50000
+BATCH_SIZE_PER_GPU = 32
+global_batch_size = (BATCH_SIZE_PER_GPU * 1)
+NUM_CLASSES = 1000
 TEST = 1
 
 #%% [markdown]
@@ -280,7 +280,7 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
 
     return tf.keras.models.Model(model_inputs, model_outputs)
 
-dataset, info = tfds.load('cifar10', with_info=True)
+dataset, info = tfds.load('imagenet2012', with_info=True)
 
 
 
@@ -289,12 +289,12 @@ train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat(
 train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = dataset['validation'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 test_dataset = test_dataset.batch(global_batch_size).repeat()
 test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
+model = vgg16.VGG16(include_top=True, weights='imagenet')
 model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
 print(OG)
@@ -323,7 +323,7 @@ for target in targets:
     with writer.as_default():
         print(f"training layer {target['name']}")
         tf.keras.backend.clear_session()
-        model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+        model = vgg16.VGG16(include_top=True, weights='imagenet')
         in_layer = target['layer']
         get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output, 
                                                                 model.layers[in_layer].output])
@@ -345,12 +345,13 @@ for target in targets:
         reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
         early_stop = tf.keras.callbacks.EarlyStopping(patience=15, min_delta=.0001, restore_best_weights=True, verbose=1)
 
+        train_steps = TRAIN_SIZE // EPOCHS // global_batch_size // TEST
         replacement_layers.save('/tmp/layer.h5')
 
         for epoch in range(EPOCHS + 1):
 
             tf.keras.backend.clear_session()
-            model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+            model = vgg16.VGG16(include_top=True, weights='imagenet')
             in_layer = target['layer']
             get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output, 
                                                                     model.layers[in_layer].output])
@@ -364,20 +365,20 @@ for target in targets:
 
             history = replacement_layers.fit(x=layer_train_gen,
                                         epochs=1,
-                                        steps_per_epoch=TRAIN_SIZE // global_batch_size // TEST,
-                                        validation_data=layer_test_gen,
+                                        steps_per_epoch=train_steps,
                                         shuffle=False,
                                         callbacks=[reduce_lr, early_stop],
-                                        validation_steps=VALIDATION_SIZE // global_batch_size // TEST,
                                         verbose=1)
             
+
+                
             replacement_layers.save('/tmp/layer.h5')
 
             target['weights'] = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
 
             tf.keras.backend.clear_session()
 
-            model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+            model = vgg16.VGG16(include_top=True, weights='imagenet')
             layer_name = target['name']
             layer_pos = target['layer']
             filters = model.layers[layer_pos].output.shape[-1]
@@ -389,12 +390,12 @@ for target in targets:
             target['score'] = new_model.evaluate(test_dataset, steps=VALIDATION_SIZE // global_batch_size // TEST)
 
             tf.summary.scalar(name='rep_loss', data=history.history['loss'][0], step=epoch)
-            tf.summary.scalar(name='val_loss', data=history.history['val_loss'][0], step=epoch)
+            #tf.summary.scalar(name='val_loss', data=history.history['val_loss'][0], step=epoch)
             tf.summary.scalar(name='model_acc', data=target['score'][1], step=epoch)
             tf.summary.scalar(name='model_loss', data=target['score'][0], step=epoch)
 
             writer.flush()
-            print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
+            print(f"epoch: {epoch}, rep loss {history.history['loss']}, , model acc {target['score'][1]}")
 
             if np.abs(OG[1] - target['score'][1]) < 0.0001:
                 print('stoping early')
