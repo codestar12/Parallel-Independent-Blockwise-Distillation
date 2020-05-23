@@ -2,7 +2,7 @@
 
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 #%%
 import tensorflow as tf
 
@@ -24,13 +24,13 @@ print("processed")
 
 
 #%%
-EPOCHS = 64
+EPOCHS = 24
 IMAGE_SIZE = (224, 224)
-TRAIN_SIZE = 1281167
-VALIDATION_SIZE = 50000
-BATCH_SIZE_PER_GPU = 32
+TRAIN_SIZE = 9469
+VALIDATION_SIZE = 3925
+BATCH_SIZE_PER_GPU = 16
 global_batch_size = (BATCH_SIZE_PER_GPU * 1)
-NUM_CLASSES = 1000
+NUM_CLASSES = 10
 TEST = 1
 
 #%% [markdown]
@@ -280,7 +280,7 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
 
     return tf.keras.models.Model(model_inputs, model_outputs)
 
-dataset, info = tfds.load('imagenet2012', with_info=True)
+dataset, info = tfds.load('imagenette', with_info=True)
 
 
 
@@ -294,7 +294,7 @@ test_dataset = test_dataset.batch(global_batch_size).repeat()
 test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-model = vgg16.VGG16(include_top=True, weights='imagenet')
+model = tf.keras.models.load_model('./imagenette.h5')
 model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
 print(OG)
@@ -319,11 +319,11 @@ pprint.pprint(targets)
 
 for target in targets:
 
-    writer = tf.summary.create_file_writer(f"./summarys/vgg/imagenet/{target['name']}")
+    writer = tf.summary.create_file_writer(f"./summarys/vgg/imagenette{target['name']}")
     with writer.as_default():
         print(f"training layer {target['name']}")
         tf.keras.backend.clear_session()
-        model =  vgg16.VGG16(include_top=True, weights='imagenet')
+        model = tf.keras.models.load_model('./imagenette.h5')
         in_layer = target['layer']
         get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
                                                                 model.layers[in_layer].output])
@@ -351,7 +351,7 @@ for target in targets:
         for epoch in range(EPOCHS):
 
             tf.keras.backend.clear_session()
-            model = vgg16.VGG16(include_top=True, weights='imagenet')
+            model = tf.keras.models.load_model('./imagenette.h5')
             in_layer = target['layer']
             get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
                                                                     model.layers[in_layer].output])
@@ -365,7 +365,7 @@ for target in targets:
 
             history = replacement_layers.fit(x=layer_train_gen,
                                         epochs=1,
-                                        steps_per_epoch=train_steps,
+                                        steps_per_epoch=TRAIN_SIZE // global_batch_size // TEST,
                                         shuffle=False,
                                         callbacks=[reduce_lr, early_stop],
                                         verbose=1)
@@ -378,7 +378,7 @@ for target in targets:
 
             tf.keras.backend.clear_session()
 
-            model = vgg16.VGG16(include_top=True, weights='imagenet')
+            model = tf.keras.models.load_model('./imagenette.h5')
             layer_name = target['name']
             layer_pos = target['layer']
             filters = model.layers[layer_pos].output.shape[-1]
@@ -404,7 +404,8 @@ for target in targets:
 
 
 tf.keras.backend.clear_session()
-model = vgg16.VGG16(include_top=True, weights='imagenet')
+model = tf.keras.models.load_model('./imagenette.h5')
+
 
 for target in targets[::-1]:
     print(f'replacing layer {target["name"]}')
@@ -413,17 +414,20 @@ for target in targets[::-1]:
     layer_pos = target['layer']
     filters = model.layers[layer_pos].output.shape[-1]
 
+
+
     new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
     new_model.layers[layer_pos].set_weights(target['weights'][0])
     new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
 
-    new_model.save('imagenet_modified.h5')
+    new_model.save('imagenette_modified.h5')
     tf.keras.backend.clear_session()
-    model = tf.keras.models.load_model('imagenet_modified.h5')
+    model = tf.keras.models.load_model('imagenette_modified.h5')
 
-model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_corssentropy", metrics=['accuracy'])
+tf.keras.backend.clear_session()
+model = tf.keras.models.load_model('imagenette_modified.h5')
+model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
 model.evaluate(test_dataset, steps=VALIDATION_SIZE // global_batch_size // TEST)
-
 
 
 
