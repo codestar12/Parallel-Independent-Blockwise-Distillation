@@ -432,7 +432,7 @@ def train_layer(target):
 	return target
 
 if __name__ == '__main__':
-	multiprocessing.set_start_method('spawn', force=True)
+	#multiprocessing.set_start_method('spawn', force=True)
 	with multiprocessing.Pool(processes=2) as pool:
 		targets = pool.map(train_layer, targets)
 
