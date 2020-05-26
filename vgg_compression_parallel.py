@@ -20,9 +20,10 @@ import multiprocessing
 
 
 #used to fix bug in keras preprocessing scope
-temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
-preprocess_input(temp)
-print("processed")
+with tf.device('/CPU:0'):
+	temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
+	preprocess_input(temp)
+	print("processed")
 
 
 #%%
