@@ -348,7 +348,7 @@ def train_layer(target):
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel{target['name']}")
+	writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel/{target['name']}")
 	with writer.as_default():
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
@@ -432,8 +432,6 @@ def train_layer(target):
 	return target
 
 if __name__ == '__main__':
-	multiprocessing import freeze_support()
-	freeze_support()
 	multiprocessing.set_start_method('spawn', force=True)
 	with multiprocessing.Pool(processes=2) as pool:
 		targets = pool.map(train_layer, targets)
