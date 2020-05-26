@@ -332,17 +332,17 @@ def train_layer(target):
 		# for if running without multiprocessing
 		worker = 0
 	
+	dataset, info = tfds.load('cifar10', with_info=True)
+
+	train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
+	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+	test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.batch(global_batch_size).repeat()
+	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
 	with tf.device(f'/GPU:{worker}'):
-		dataset, info = tfds.load('cifar10', with_info=True)
-
-		train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-		train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
-		train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
-		test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-		test_dataset = test_dataset.batch(global_batch_size).repeat()
-		test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
 		writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel{target['name']}")
 		with writer.as_default():
 			print(f"training layer {target['name']}")
