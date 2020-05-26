@@ -344,11 +344,14 @@ def train_layer(target):
 
 	tf.keras.backend.clear_session()
 	with tf.device(f'/GPU:{worker}'):
+		print("made it into device")
 		writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel{target['name']}")
 		with writer.as_default():
 			print(f"training layer {target['name']}")
 			tf.keras.backend.clear_session()
+			print("cleared backend")
 			model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+			print("model loaded")
 			in_layer = target['layer']
 			get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output, 
 																	model.layers[in_layer].output])
@@ -372,6 +375,7 @@ def train_layer(target):
 
 			replacement_layers.save('/tmp/layer.h5')
 
+			print('epochs started')
 			for epoch in range(EPOCHS + 1):
 
 				tf.keras.backend.clear_session()
@@ -387,6 +391,7 @@ def train_layer(target):
 
 				replacement_layers = tf.keras.models.load_model('/tmp/layer.h5')
 
+				print('training started')
 				history = replacement_layers.fit(x=layer_train_gen,
 											epochs=1,
 											steps_per_epoch=TRAIN_SIZE // global_batch_size // TEST,
