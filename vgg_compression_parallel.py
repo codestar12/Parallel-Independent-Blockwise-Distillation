@@ -348,7 +348,7 @@ def train_layer(target):
 	for i in range(len(physical_devices)):
 		tf.config.experimental.set_memory_growth(physical_devices[i], True)
 	
-	with tf.device(f':GPU{target['layer'] % 2}'):
+	with tf.device(f'/GPU:{worker}'):
 		dataset, info = tfds.load('cifar10', with_info=True)
 
 		train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -443,7 +443,6 @@ def train_layer(target):
 	return target
 
 if __name__ == '__main__':
-	multiprocessing.set_start_method('spawn', force=True)
 	with multiprocessing.Pool(processes=2) as pool:
 		targets = pool.map(train_layer, targets)
 
