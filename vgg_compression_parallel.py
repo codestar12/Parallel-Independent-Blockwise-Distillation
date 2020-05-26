@@ -331,7 +331,7 @@ def train_layer(target):
 		worker = multiprocessing.current_process()._identity[0] - 1 
 	except:
 		# for if running without multiprocessing
-		worker = 0
+		raise Exception("worker not assigned correctly")
 
 	os.environ["CUDA_VISIBLE_DEVICES"]=str(worker)
 
