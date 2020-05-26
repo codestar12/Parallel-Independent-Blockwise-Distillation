@@ -334,7 +334,10 @@ def train_layer(target):
 		worker = 0
 
 	os.environ["CUDA_VISIBLE_DEVICES"]=str(worker)
-	
+
+	for i in range(len(physical_devices)):
+		tf.config.experimental.set_memory_growth(physical_devices[i], True)
+
 	dataset, info = tfds.load('cifar10', with_info=True)
 
 	train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
