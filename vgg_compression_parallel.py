@@ -317,6 +317,8 @@ for i, layer in enumerate(model.layers):
 
 pprint.pprint(targets)
 
+tf.keras.backend.clear_session()
+
 def train_layer(target):
 	"""Trains a replacement layer given a target
 
@@ -342,9 +344,6 @@ def train_layer(target):
 	import numpy as np
 	import tensorflow_datasets as tfds
 	physical_devices = tf.config.experimental.list_physical_devices('GPU')
-	assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
-	for i in range(len(physical_devices)):
-		tf.config.experimental.set_memory_growth(physical_devices[i], True)
 	
 	with tf.device(f':GPU{worker}'):
 		dataset, info = tfds.load('cifar10', with_info=True)
