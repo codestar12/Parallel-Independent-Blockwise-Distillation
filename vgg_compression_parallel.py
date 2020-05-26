@@ -342,6 +342,7 @@ def train_layer(target):
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
+	tf.keras.backend.clear_session()
 	with tf.device(f'/GPU:{worker}'):
 		writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel{target['name']}")
 		with writer.as_default():
