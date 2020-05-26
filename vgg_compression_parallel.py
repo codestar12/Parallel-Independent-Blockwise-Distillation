@@ -30,8 +30,8 @@ VALIDATION_SIZE = 10000
 BATCH_SIZE_PER_GPU = 64
 global_batch_size = (BATCH_SIZE_PER_GPU * 1)
 NUM_CLASSES = 10
-EPOCHS = 64
 TEST = 1
+EPOCHS = 64 if TEST == 1 else 2
 
 #%% [markdown]
 # Dataset code
@@ -324,8 +324,17 @@ def train_layer(target):
 	Returns:
 		target: Updated dictonary
 	"""
+	dataset, info = tfds.load('cifar10', with_info=True)
 
-	writer = tf.summary.create_file_writer(f"./summarys/{target['name']}")
+	train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
+	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+	test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.batch(global_batch_size).repeat()
+	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+	writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel{target['name']}")
 	with writer.as_default():
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
@@ -415,33 +424,37 @@ targets = [train_layer(target) for target in targets]
         
 
 tf.keras.backend.clear_session()
-model = tf.keras.models.load_model('./base_model_cifar10_vgg.h5')
+model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
 
 
-for target in targets[::-1]:
-    print(f'replacing layer {target["name"]}')
+writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel/final_model")
+with writer.as_default():
+    for target in targets[::-1]:
+        print(f'replacing layer {target["name"]}')
 
-    layer_name = target['name']
-    layer_pos = target['layer']
-    filters = model.layers[layer_pos].output.shape[-1]
+        layer_name = target['name']
+        layer_pos = target['layer']
+        filters = model.layers[layer_pos].output.shape[-1]
 
 
 
-    new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
-    new_model.layers[layer_pos].set_weights(target['weights'][0])
-    new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
+        new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
+        new_model.layers[layer_pos].set_weights(target['weights'][0])
+        new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
 
-    new_model.save('cifar10_vgg_modified.h5')
+        new_model.save('cifar10_vgg_modified.h5')
+        tf.keras.backend.clear_session()
+        model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
+
     tf.keras.backend.clear_session()
     model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
+    model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
+    final = model.evaluate(test_dataset, steps=VALIDATION_SIZE // global_batch_size // TEST)
 
-tf.keras.backend.clear_session()
-model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
-model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
-model.evaluate(test_dataset, steps=VALIDATION_SIZE // global_batch_size // TEST)
+    tf.summary.scalar(name='model_acc', data=final[1], step=0)
+    tf.summary.scalar(name='model_loss', data=final[0], step=0)
 
-
-
+    writer.flush()
 #%%
 # for target in targets:
     
