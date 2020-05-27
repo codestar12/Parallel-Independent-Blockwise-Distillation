@@ -445,8 +445,8 @@ if __name__ == '__main__':
 		gpu.start()
 
 
-        for pgu in gpus:
-                gpu.join()
+	for pgu in gpus:
+		gpu.join()
 
 	targets = list(q.queue)
 	list.sort(targets, key=lambda target: target['layer'])
