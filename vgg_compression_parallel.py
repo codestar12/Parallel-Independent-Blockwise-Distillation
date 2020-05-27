@@ -140,68 +140,68 @@ def load_image_test(datapoint):
   return input_image, tf.one_hot(label, depth=NUM_CLASSES)
 
 class LayerBatch(tf.keras.utils.Sequence):
-    
+
     def __init__(self, input_model, dataset):
         self.input_model = input_model
         self.dataset = dataset.__iter__()
-        
+
     def __len__(self):
         return math.ceil(TRAIN_SIZE // global_batch_size )
-    
+
     def __getitem__(self, index):
         X, y = self.input_model(next(self.dataset))
         return X, y
-    
+
 class LayerBatchSynth(tf.keras.utils.Sequence):
-    
+
     def __init__(self, input_model, dataset):
         self.input_model = input_model
         self.dataset = dataset.__iter__()
-        
+
     def __len__(self):
         return math.ceil(4224 // global_batch_size )
-    
+
     def __getitem__(self, index):
         X, y = self.input_model(next(self.dataset))
         return X, y
-    
+
 import math
 class LayerTest(tf.keras.utils.Sequence):
-    
+
     def __init__(self, input_model, dataset):
         self.input_model = input_model
         self.dataset = dataset.__iter__()
-        
+
     def __len__(self):
         return math.ceil(VALIDATION_SIZE // global_batch_size )
-    
+
     def __getitem__(self, index):
         X, y = self.input_model(next(self.dataset))
         return X, y
 
 def add_layers(inputs, filters, layers=2):
     print(inputs.get_shape())
-    X = tf.keras.layers.SeparableConv2D(name=f'sep_conv_{build_replacement.counter}', filters=filters, 
+    X = tf.keras.layers.SeparableConv2D(name=f'sep_conv_{build_replacement.counter}', filters=filters,
                                         kernel_size= (3,3),
                                         padding='Same')(inputs)
     #X = tf.keras.layers.BatchNormalization(name=f'batch_norm_{build_replacement.counter}')(X)
     X = tf.keras.layers.ReLU(name=f'relu_{build_replacement.counter}')(X)
-    
+
     build_replacement.counter += 1
-    
+
     for i in range(1, layers):
         X = tf.keras.layers.SeparableConv2D(name=f'sep_conv_{build_replacement.counter}', filters=filters,
-                                            kernel_size=(3,3), 
+                                            kernel_size=(3,3),
                                             padding='Same')(X)
         #X = tf.keras.layers.BatchNormalization(name=f'batch_norm_{build_replacement.counter}')(X)
         X = tf.keras.layers.ReLU(name=f'relu_{build_replacement.counter}')(X)
         build_replacement.counter += 1
-    
+
     return X
-    
+
 def build_replacement(get_output, layers=2):
     inputs = tf.keras.Input(shape=get_output.output[0].shape[1::])
-    
+
     X = add_layers(inputs, get_output.output[1].shape[-1], layers)
     replacement_layers = tf.keras.Model(inputs=inputs, outputs=X)
     return replacement_layers
@@ -209,7 +209,7 @@ def build_replacement(get_output, layers=2):
 build_replacement.counter = 0
 
 def replac(inp, filters):
-    
+
     return add_layers(inp, filters,layers=2)
 
 def make_list(X):
@@ -263,7 +263,7 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
             # I added the exception model_3_3/Identity:0 I think the problem is that is the input layer
             inpt = list_no_list([tsr_dict[name]  for name in inpt_names])
 
-            ### remake layer 
+            ### remake layer
             if layer.name in replace_layer_subname:
               if "relu" in layer.name or 'bn' in layer.name:
                 print('deleting ' + layer.name)
@@ -330,7 +330,7 @@ def train_layer(target, pid):
 	Returns:
 		target: Updated dictonary
 	"""
-	
+
 	dataset, info = tfds.load('cifar10', with_info=True)
 
 	train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -349,7 +349,7 @@ def train_layer(target, pid):
 		model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
 		print("model loaded")
 		in_layer = target['layer']
-		get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output, 
+		get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
 																model.layers[in_layer].output])
 
 
@@ -377,11 +377,11 @@ def train_layer(target, pid):
 			tf.keras.backend.clear_session()
 			model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
 			in_layer = target['layer']
-			get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output, 
+			get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
 																	model.layers[in_layer].output])
 
 
-			
+
 			layer_train_gen = LayerBatch(get_output, train_dataset)
 			layer_test_gen = LayerTest(get_output, test_dataset)
 
@@ -396,7 +396,7 @@ def train_layer(target, pid):
 										callbacks=[reduce_lr, early_stop],
 										validation_steps=VALIDATION_SIZE // global_batch_size // TEST,
 										verbose=1)
-			
+
 			replacement_layers.save(f'/tmp/layer_{pid}.h5')
 
 			target['weights'] = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
@@ -421,18 +421,18 @@ def train_layer(target, pid):
 
 			writer.flush()
 			print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
-		
+
 	return target
 
 
 def process(targets, pid, q):
 
 	with tf.device(f'/GPU:{pid}'):
-		
-		for i in range(pid, len(targets), NUM_PROC)):
-			q.put(train_layer(targets[i]), pid)
 
-	
+		for i in range(pid, len(targets), NUM_PROC):
+			q.put(train_layer(targets[i], pid))
+
+
 
 
 if __name__ == '__main__':
@@ -443,7 +443,10 @@ if __name__ == '__main__':
 
 	for gpu in gpus:
 		gpu.start()
-		gpu.join()
+
+
+        for pgu in gpus:
+                gpu.join()
 
 	targets = list(q.queue)
 	list.sort(targets, key=lambda target: target['layer'])

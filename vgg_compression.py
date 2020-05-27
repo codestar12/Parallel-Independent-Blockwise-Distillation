@@ -31,7 +31,7 @@ BATCH_SIZE_PER_GPU = 64
 global_batch_size = (BATCH_SIZE_PER_GPU * 1)
 NUM_CLASSES = 10
 TEST = 1
-EPOCHS = 64 if TEST == 1 else 2
+EPOCHS = 20 if TEST == 1 else 2
 
 #%% [markdown]
 # Dataset code
