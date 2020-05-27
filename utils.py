@@ -6,6 +6,15 @@ import tensorflow_datasets as tfds
 
 temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
 preprocess_input(temp)
+IMAGE_SIZE = (224, 224)
+TRAIN_SIZE = 50000
+VALIDATION_SIZE = 10000
+BATCH_SIZE_PER_GPU = 64
+global_batch_size = (BATCH_SIZE_PER_GPU * 1)
+NUM_CLASSES = 10
+TEST = 100
+EPOCHS = 64 if TEST == 1 else 2
+NUM_PROC = 2
 
 def flip(x: tf.Tensor) -> tf.Tensor:
     """Flip augmentation
