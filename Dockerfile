@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:2.1.0-gpu-py3
+FROM tensorflow/tensorflow:2.2.0rc2-gpu-py3
 RUN apt-get update
 RUN apt-get install -y mpich
 RUN pip install mpi4py
