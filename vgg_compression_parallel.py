@@ -7,11 +7,6 @@ import math
 import multiprocessing
 
 
-#used to fix bug in keras preprocessing scope
-temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
-preprocess_input(temp)
-print("processed")
-
 IMAGE_SIZE = (224, 224)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
@@ -34,11 +29,9 @@ def train_layer(target):
 	"""
 
 	import tensorflow as tf
-	from tensorflow.keras.applications.vgg16 import preprocess_input
 	import tensorflow_datasets as tfds
 	from utils import load_image_train, load_image_test, build_replacement, LayerBatch, LayerTest, replac, replace_layer
-	temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
-	preprocess_input(temp)
+
 	worker = multiprocessing.current_process()._identity[0] - 1
 	print(f"worker {worker}")
 	# with tf.device(f'/GPU:{pid}'):
