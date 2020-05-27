@@ -426,7 +426,7 @@ def train_layer(target, pid):
 
 
 def process(targets, pid, q):
-
+	print(f'\n\n\n\n\n PID: {pid}')
 	with tf.device(f'/GPU:{pid}'):
 
 		for i in range(pid, len(targets), NUM_PROC):
@@ -446,7 +446,7 @@ if __name__ == '__main__':
 		gpu.start()
 
 
-	for pgu in gpus:
+	for gpu in gpus:
 		gpu.join()
 
 	targets = list(q.queue)
