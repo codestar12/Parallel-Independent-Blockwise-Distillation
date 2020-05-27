@@ -1,7 +1,7 @@
 
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 import math
 from mpi4py import MPI
 import tensorflow as tf
