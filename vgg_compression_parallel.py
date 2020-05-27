@@ -430,7 +430,8 @@ def process(targets, pid, q):
 	with tf.device(f'/GPU:{pid}'):
 
 		for i in range(pid, len(targets), NUM_PROC):
-			q.put(train_layer(targets[i], pid))
+			target = train_layer(targets[i], pid)
+			q.put(target)
 
 
 
