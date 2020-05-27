@@ -3,25 +3,9 @@
 
 import os
 #os.environ["CUDA_VISIBLE_DEVICES"]="0"
-#%%
-import tensorflow as tf
-
-from tensorflow.keras.applications.vgg16 import preprocess_input
-import matplotlib.pyplot as plt
-import numpy as np
-import tensorflow_datasets as tfds
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
-for i in range(len(physical_devices)):
-	tf.config.experimental.set_memory_growth(physical_devices[i], True)
 import math
 import multiprocessing
 
-
-#used to fix bug in keras preprocessing scope
-temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
-preprocess_input(temp)
-print("processed")
 
 IMAGE_SIZE = (224, 224)
 TRAIN_SIZE = 50000
@@ -145,9 +129,6 @@ def train_layer(target):
 	# 			print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
 
 	return target
-
-
-d
 
 
 if __name__ == '__main__':
