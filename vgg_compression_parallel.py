@@ -133,7 +133,7 @@ if __name__ == '__main__':
 	comm = MPI.COMM_WORLD
 	rank = comm.Get_rank()	
 
-	tf.debugging
+	tf.debugging.set_log_device_placement(True)
 	with tf.device(f'/GPU:{rank}'):
 		a = tf.constant([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
 		b = tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
