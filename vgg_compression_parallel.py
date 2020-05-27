@@ -16,7 +16,7 @@ EPOCHS = 64 if TEST == 1 else 2
 NUM_PROC = 2
 
 
-def train_layer(target):
+def train_layer(target, rank=0):
 
 	"""Trains a replacement layer given a target
 
@@ -148,7 +148,7 @@ if __name__ == '__main__':
 	comm.Barrier()
 
 	with tf.device(f'/GPU:{rank}'):
-		targets = [train_layer(targets[i]) for i in range(rank, len(targets), size)]
+		targets = [train_layer(targets[i], rank) for i in range(rank, len(targets), size)]
 		
 
 	targets = comm.gather(targets, root=0)
