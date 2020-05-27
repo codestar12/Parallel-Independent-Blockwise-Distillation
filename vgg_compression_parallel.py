@@ -142,6 +142,10 @@ if __name__ == '__main__':
 		assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
 		for i in range(len(physical_devices)):
 			tf.config.experimental.set_memory_growth(physical_devices[i], True)
+		#need the dataset file to be loaded before training
+		dataset, info = tfds.load('cifar10', with_info=True)
+
+	comm.Barrier()
 
 	with tf.device(f'/GPU:{rank}'):
 		targets = [train_layer(targets[i]) for i in range(rank, len(targets), size)]
