@@ -7,6 +7,11 @@ import math
 import multiprocessing
 
 
+#used to fix bug in keras preprocessing scope
+temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
+preprocess_input(temp)
+print("processed")
+
 IMAGE_SIZE = (224, 224)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
@@ -137,7 +142,6 @@ if __name__ == '__main__':
 	with open('targets.json', 'r') as f:
 		targets = json.load(f)
 	
-	multiprocessing.set_start_method('spawn')
 	with multiprocessing.Pool(processes=NUM_PROC) as pool:
 		targets = pool.map(train_layer, targets)
 
