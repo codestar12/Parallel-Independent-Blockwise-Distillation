@@ -20,10 +20,9 @@ import multiprocessing
 
 
 #used to fix bug in keras preprocessing scope
-with tf.device('/CPU:0'):
-	temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
-	preprocess_input(temp)
-	print("processed")
+temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
+preprocess_input(temp)
+print("processed")
 
 
 #%%
@@ -287,21 +286,20 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
 dataset, info = tfds.load('cifar10', with_info=True)
 
 
-with tf.device('/CPU:0'):
-	train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
-	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
+train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-	test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	test_dataset = test_dataset.batch(global_batch_size).repeat()
-	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = test_dataset.batch(global_batch_size).repeat()
+test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-	model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
-	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
-	OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
-	print(OG)
+model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
+model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
+OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
+print(OG)
 
 
 #%%
