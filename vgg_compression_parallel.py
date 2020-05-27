@@ -129,7 +129,7 @@ if __name__ == '__main__':
 	import json 
 	import functools
 	import operator
-
+	import tensorflow_datasets as tfds
 	with open('targets.json', 'r') as f:
 		targets = json.load(f)
 
