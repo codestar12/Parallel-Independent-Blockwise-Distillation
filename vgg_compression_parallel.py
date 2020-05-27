@@ -16,13 +16,6 @@ EPOCHS = 64 if TEST == 1 else 2
 NUM_PROC = 2
 
 
-def test_fun():
-	a = tf.constant([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-	b = tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-
-	c = tf.matmul(a, b)
-	return c
-
 def train_layer(target):
 
 	"""Trains a replacement layer given a target
@@ -139,15 +132,26 @@ if __name__ == '__main__':
 		targets = json.load(f)
 
 	comm = MPI.COMM_WORLD
-	rank = comm.Get_rank()	
+	rank = comm.Get_rank()
+	size = comm.Get_size()	
 
-	tf.debugging.set_log_device_placement(True)
+	if rank == 0:
+		physical_devices = tf.config.experimental.list_physical_devices('GPU')
+		assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+		for i in range(len(physical_devices)):
+			tf.config.experimental.set_memory_growth(physical_devices[i], True)
+
 	with tf.device(f'/GPU:{rank}'):
-		c = test_fun()
+		targets = [i for i in range(rank, len(targets), size)]
 		
 
 	if rank == 0:
-		print(c)
+		print(targets)
+
+	targets = comm.gather(targets, root=0)
+
+	if rank == 0:
+		print(targets)
 	
 
 	#print(targets)
