@@ -69,7 +69,7 @@ def train_layer(target, rank=0):
 		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
 		early_stop = tf.keras.callbacks.EarlyStopping(patience=15, min_delta=.0001, restore_best_weights=True, verbose=1)
 
-		replacement_layers.save(f'/tmp/layer_{pid}.h5')
+		replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
 		print('epochs started')
 		for epoch in range(EPOCHS + 1):
@@ -85,7 +85,7 @@ def train_layer(target, rank=0):
 			layer_train_gen = LayerBatch(get_output, train_dataset)
 			layer_test_gen = LayerTest(get_output, test_dataset)
 
-			replacement_layers = tf.keras.models.load_model(f'/tmp/layer_{pid}.h5')
+			replacement_layers = tf.keras.models.load_model(f'/tmp/layer_{rank}.h5')
 
 			print('training started')
 			history = replacement_layers.fit(x=layer_train_gen,
@@ -97,7 +97,7 @@ def train_layer(target, rank=0):
 										validation_steps=VALIDATION_SIZE // global_batch_size // TEST,
 										verbose=1)
 
-			replacement_layers.save(f'/tmp/layer_{pid}.h5')
+			replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
 			target['weights'] = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
 
