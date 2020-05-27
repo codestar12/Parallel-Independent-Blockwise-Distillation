@@ -15,6 +15,14 @@ TEST = 100
 EPOCHS = 64 if TEST == 1 else 2
 NUM_PROC = 2
 
+
+def test_fun():
+	a = tf.constant([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+	b = tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+
+	c = tf.matmul(a, b)
+	return c
+
 def train_layer(target):
 
 	"""Trains a replacement layer given a target
@@ -135,10 +143,8 @@ if __name__ == '__main__':
 
 	tf.debugging.set_log_device_placement(True)
 	with tf.device(f'/GPU:{rank}'):
-		a = tf.constant([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-		b = tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-
-		c = tf.matmul(a, b)
+		c = test_fun()
+		
 
 	if rank == 0:
 		print(c)
