@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import preprocess_input
 import matplotlib.pyplot as plt
 import numpy as np
