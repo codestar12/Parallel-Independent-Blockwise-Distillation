@@ -362,3 +362,5 @@ model.fit(train_dataset,
 lr_schedule.plot()
 
 lr_finder.plot()
+
+model.save('base_model_cifar10(32x32)_vgg16.h5')
