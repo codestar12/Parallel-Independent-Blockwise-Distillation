@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1XH3tTWXJbne-7Se58oSWLzzWwi3EcHY0
 """
 
-!pip install tensorflow_datasets
 
 import tensorflow as tf
 
@@ -16,6 +15,11 @@ from tensorflow.keras.applications.vgg16 import preprocess_input
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow_datasets as tfds
+
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+for i in range(len(physical_devices)):
+        tf.config.experimental.set_memory_growth(physical_devices[i], True)
 
 temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
 preprocess_input(temp)
@@ -28,7 +32,7 @@ IMAGE_SIZE = (32, 32)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
 mirrored_strategy = tf.distribute.MirroredStrategy()
-BATCH_SIZE_PER_GPU = 256
+BATCH_SIZE_PER_GPU = 128
 global_batch_size = (BATCH_SIZE_PER_GPU * mirrored_strategy.num_replicas_in_sync)
 NUM_CLASSES = 10
 
@@ -319,25 +323,30 @@ class OneCycleScheduler(Callback):
         ax.plot(self.moms)
         ax.set_title('Momentum')
 
-epochs = 5
-lr = 2e-2
-steps = np.ceil(50000 / global_batch_size) * epochs
-lr_finder = LRFinder()
+# epochs = 5
+# lr = 2e-2
+# steps = np.ceil(50000 / global_batch_size) * epochs
+# lr_finder = LRFinder()
 
-model.compile(tf.keras.optimizers.SGD(.1, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
-model.fit(train_dataset,
-          epochs=epochs, 
-          steps_per_epoch=TRAIN_SIZE//global_batch_size, 
-          validation_data=test_dataset, 
-          validation_steps=10000//global_batch_size, 
-          callbacks=[lr_finder])
+# model.compile(tf.keras.optimizers.SGD(.1, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
+# model.fit(train_dataset,
+#           epochs=epochs, 
+#           steps_per_epoch=TRAIN_SIZE//global_batch_size, 
+#           validation_data=test_dataset, 
+#           validation_steps=10000//global_batch_size, 
+#           callbacks=[lr_finder])
 
-lr_finder.plot()
+# lr_finder.plot()
 
-base_model = vgg16.VGG16(input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 3), weights=None, include_top=False)
+base_model = vgg16.VGG16(input_shape=(IMAGE_SIZE[0], IMAGE_SIZE[1], 3), weights='imagenet', include_top=False)
+
+for layer in base_model.layers:
+	layer.trainable = False
 
 x = base_model.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Dense(256, activation='relu')(x)
+x = tf.keras.layers.Dropout(0.5)(x)
 x = tf.keras.layers.Dense(10)(x)
 outputs = tf.keras.layers.Activation('softmax', dtype='float32', name='predictions')(x)
 
@@ -346,21 +355,38 @@ early_stop = tf.keras.callbacks.EarlyStopping(patience=15, min_delta=1e-2, verbo
 
 model = tf.keras.models.Model(inputs=base_model.input, outputs=outputs)
 
-epochs = 100
-lr = 0.8e-2
+
+
+epochs = 8
+lr = 2e-3
 steps = np.ceil(50000 / global_batch_size) * epochs
 lr_schedule = OneCycleScheduler(lr, steps)
 
-model.compile(tf.keras.optimizers.SGD(.1, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
+model.compile(tf.keras.optimizers.SGD(lr, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
 model.fit(train_dataset,
           epochs=epochs, 
           steps_per_epoch=TRAIN_SIZE//global_batch_size, 
           validation_data=test_dataset, 
           validation_steps=10000//global_batch_size, 
-          callbacks=[lr_schedule])
+          callbacks=[lr_schedule, early_stop, reduce_lr])
+
+for layer in base_model.layers:
+	layer.trainable = True
+
+epochs = 50
+lr = 1e-2
+steps = np.ceil(50000 / global_batch_size) * epochs
+lr_schedule = OneCycleScheduler(lr, steps)
+
+model.compile(tf.keras.optimizers.SGD(lr, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
+model.fit(train_dataset,
+          epochs=epochs, 
+          steps_per_epoch=TRAIN_SIZE//global_batch_size, 
+          validation_data=test_dataset, 
+          validation_steps=10000//global_batch_size, 
+          callbacks=[lr_schedule, early_stop, reduce_lr])
 
 lr_schedule.plot()
 
-lr_finder.plot()
 
 model.save('base_model_cifar10(32x32)_vgg16.h5')

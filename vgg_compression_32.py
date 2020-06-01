@@ -1,5 +1,7 @@
 #%%
-
+import ptvsd
+ptvsd.enable_attach(address=('0.0.0.0', 5678))
+ptvsd.wait_for_attach()
 
 import os
 #os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -300,6 +302,7 @@ with writer.as_default():
 
 print(OG)
 
+model.summary()
 
 #%%
 
@@ -318,7 +321,7 @@ pprint.pprint(targets)
 
 
 
-for target in targets:
+for target in targets[1::]:
 
     writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/{target['name']}")
     with writer.as_default():
