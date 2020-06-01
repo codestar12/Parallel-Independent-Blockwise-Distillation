@@ -1,18 +1,29 @@
 
 
 import os
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import math
 from mpi4py import MPI
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+os.environ['CUDA_VISIBLE_DEVICES'] = str(rank)
 import tensorflow as tf
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+for i in range(len(physical_devices)):
+        tf.config.experimental.set_memory_growth(physical_devices[i], True)
+import tensorflow_datasets as tfds
+from utils import load_image_train, load_image_test, build_replacement, LayerBatch, LayerTest, replac, replace_layer
 IMAGE_SIZE = (224, 224)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
-BATCH_SIZE_PER_GPU = 32
+BATCH_SIZE_PER_GPU = 64
 global_batch_size = (BATCH_SIZE_PER_GPU * 1)
 NUM_CLASSES = 10
-TEST = 100
-EPOCHS = 64 if TEST == 1 else 2
+TEST = 1
+EPOCHS = 20 if TEST == 1 else 2
 NUM_PROC = 2
 
 
@@ -27,9 +38,6 @@ def train_layer(target, rank=0):
 		target: Updated dictonary
 	"""
 
-	import tensorflow as tf
-	import tensorflow_datasets as tfds
-	from utils import load_image_train, load_image_test, build_replacement, LayerBatch, LayerTest, replac, replace_layer
 
 	dataset, info = tfds.load('cifar10', with_info=True)
 
@@ -41,7 +49,7 @@ def train_layer(target, rank=0):
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel/{target['name']}")
+	writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel_3/{target['name']}")
 	with writer.as_default():
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
@@ -126,45 +134,38 @@ def train_layer(target, rank=0):
 
 
 if __name__ == '__main__':
-	import json 
+	import json
 	import functools
 	import operator
 	import tensorflow_datasets as tfds
 	with open('targets.json', 'r') as f:
 		targets = json.load(f)
 
-	comm = MPI.COMM_WORLD
-	rank = comm.Get_rank()
-	size = comm.Get_size()	
 
-	physical_devices = tf.config.experimental.list_physical_devices('GPU')
-	assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
-	for i in range(len(physical_devices)):
-		tf.config.experimental.set_memory_growth(physical_devices[i], True)
 
 	if rank == 0:
 
 		#need the dataset file to be loaded before training
 		dataset, info = tfds.load('cifar10', with_info=True)
 
-	comm.Barrier()
+
 
 	with tf.device(f'/GPU:{rank}'):
 		targets = [train_layer(targets[i], rank) for i in range(rank, len(targets), size)]
-		
+
 
 	targets = comm.gather(targets, root=0)
 
 	if rank == 0:
 		targets = functools.reduce(operator.iconcat, targets, [])
 
-		list.sort(target, key=lambda target: target['layer'])
+		list.sort(targets, key=lambda target: target['layer'])
 
 		tf.keras.backend.clear_session()
 		model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
 
 
-		writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel/final_model")
+		writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel_3/final_model")
 		with writer.as_default():
 			for target in targets[::-1]:
 				print(f'replacing layer {target["name"]}')
@@ -184,6 +185,11 @@ if __name__ == '__main__':
 				model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
 
 			tf.keras.backend.clear_session()
+
+			test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+			test_dataset = test_dataset.batch(global_batch_size).repeat()
+			test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
 			model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
 			model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=VALIDATION_SIZE // global_batch_size // TEST)
