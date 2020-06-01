@@ -290,10 +290,14 @@ test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.e
 test_dataset = test_dataset.batch(global_batch_size).repeat()
 test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
+writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/original")
+with writer.as_default():
+    model = tf.keras.models.load_model('./cifar-vgg/cifar10vgg_pretrained.h5')
+    model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
+    OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
+    tf.summary.scalar(name='model_acc', data=OG[1], step=0)
+    tf.summary.scalar(name='model_loss', data=OG[0], step=0)
 
-model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
-model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
-OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
 print(OG)
 
 
@@ -316,11 +320,11 @@ pprint.pprint(targets)
 
 for target in targets:
 
-    writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10/{target['name']}")
+    writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/{target['name']}")
     with writer.as_default():
         print(f"training layer {target['name']}")
         tf.keras.backend.clear_session()
-        model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+        model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
         in_layer = target['layer']
         get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
                                                                 model.layers[in_layer].output])
@@ -347,7 +351,7 @@ for target in targets:
         for epoch in range(EPOCHS + 1):
 
             tf.keras.backend.clear_session()
-            model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+            model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
             in_layer = target['layer']
             get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
                                                                     model.layers[in_layer].output])
@@ -374,7 +378,7 @@ for target in targets:
 
             tf.keras.backend.clear_session()
 
-            model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+            model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
             layer_name = target['name']
             layer_pos = target['layer']
             filters = model.layers[layer_pos].output.shape[-1]
@@ -402,10 +406,10 @@ for target in targets:
 
 
 tf.keras.backend.clear_session()
-model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
+model = tf.keras.models.load_model('./cifar-vgg/cifar10vgg_pretrained.h5')
 
 
-writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10/final_model")
+writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/final_model")
 with writer.as_default():
     for target in targets[::-1]:
         print(f'replacing layer {target["name"]}')
@@ -422,7 +426,7 @@ with writer.as_default():
 
         new_model.save('cifar10_vgg_modified.h5')
         tf.keras.backend.clear_session()
-        model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
+        model = tf.keras.models.load_model('cifar10_vgg_modified_32.h5')
 
     tf.keras.backend.clear_session()
     model = tf.keras.models.load_model('cifar10_vgg_modified.h5')
@@ -442,7 +446,7 @@ with writer.as_default():
 
 #     tf.keras.backend.clear_session()
 
-#     model = tf.keras.models.load_model('base_model_cifar10_vgg16.h5')
+#     model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
 
 #     layer_name = target['name']
 #     layer_pos = target['layer']
