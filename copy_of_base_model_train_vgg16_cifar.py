@@ -32,7 +32,7 @@ IMAGE_SIZE = (32, 32)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
 mirrored_strategy = tf.distribute.MirroredStrategy()
-BATCH_SIZE_PER_GPU = 128
+BATCH_SIZE_PER_GPU = 256
 global_batch_size = (BATCH_SIZE_PER_GPU * mirrored_strategy.num_replicas_in_sync)
 NUM_CLASSES = 10
 
@@ -225,13 +225,13 @@ class LRFinder(Callback):
         ax.plot(self.lrs, self.losses)
 
 class CosineAnnealer:
-    
+
     def __init__(self, start, end, steps):
         self.start = start
         self.end = end
         self.steps = steps
         self.n = 0
-        
+
     def step(self):
         self.n += 1
         cos = np.cos(np.pi * (self.n / self.steps)) + 1
@@ -254,15 +254,15 @@ class OneCycleScheduler(Callback):
         final_lr = lr_max / (div_factor * 1e4)
         phase_1_steps = steps * phase_1_pct
         phase_2_steps = steps - phase_1_steps
-        
+
         self.phase_1_steps = phase_1_steps
         self.phase_2_steps = phase_2_steps
         self.phase = 0
         self.step = 0
-        
-        self.phases = [[CosineAnnealer(lr_min, lr_max, phase_1_steps), CosineAnnealer(mom_max, mom_min, phase_1_steps)], 
+
+        self.phases = [[CosineAnnealer(lr_min, lr_max, phase_1_steps), CosineAnnealer(mom_max, mom_min, phase_1_steps)],
                  [CosineAnnealer(lr_max, final_lr, phase_2_steps), CosineAnnealer(mom_min, mom_max, phase_2_steps)]]
-        
+
         self.lrs = []
         self.moms = []
 
@@ -272,7 +272,7 @@ class OneCycleScheduler(Callback):
 
         self.set_lr(self.lr_schedule().start)
         self.set_momentum(self.mom_schedule().start)
-        
+
     def on_train_batch_begin(self, batch, logs=None):
         self.lrs.append(self.get_lr())
         self.moms.append(self.get_momentum())
@@ -281,28 +281,28 @@ class OneCycleScheduler(Callback):
         self.step += 1
         if self.step >= self.phase_1_steps:
             self.phase = 1
-            
+
         self.set_lr(self.lr_schedule().step())
         self.set_momentum(self.mom_schedule().step())
-        
+
     def get_lr(self):
         try:
             return tf.keras.backend.get_value(self.model.optimizer.lr)
         except AttributeError:
             return None
-        
+
     def get_momentum(self):
         try:
             return tf.keras.backend.get_value(self.model.optimizer.momentum)
         except AttributeError:
             return None
-        
+
     def set_lr(self, lr):
         try:
             tf.keras.backend.set_value(self.model.optimizer.lr, lr)
         except AttributeError:
             pass # ignore
-        
+
     def set_momentum(self, mom):
         try:
             tf.keras.backend.set_value(self.model.optimizer.momentum, mom)
@@ -311,10 +311,10 @@ class OneCycleScheduler(Callback):
 
     def lr_schedule(self):
         return self.phases[self.phase][0]
-    
+
     def mom_schedule(self):
         return self.phases[self.phase][1]
-    
+
     def plot(self):
         ax = plt.subplot(1, 2, 1)
         ax.plot(self.lrs)
@@ -323,18 +323,6 @@ class OneCycleScheduler(Callback):
         ax.plot(self.moms)
         ax.set_title('Momentum')
 
-# epochs = 5
-# lr = 2e-2
-# steps = np.ceil(50000 / global_batch_size) * epochs
-# lr_finder = LRFinder()
-
-# model.compile(tf.keras.optimizers.SGD(.1, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
-# model.fit(train_dataset,
-#           epochs=epochs, 
-#           steps_per_epoch=TRAIN_SIZE//global_batch_size, 
-#           validation_data=test_dataset, 
-#           validation_steps=10000//global_batch_size, 
-#           callbacks=[lr_finder])
 
 # lr_finder.plot()
 
@@ -345,48 +333,47 @@ for layer in base_model.layers:
 
 x = base_model.output
 x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Dropout(0.50)(x)
 x = tf.keras.layers.Dense(256, activation='relu')(x)
-x = tf.keras.layers.Dropout(0.5)(x)
+x = tf.keras.layers.Dropout(0.65)(x)
 x = tf.keras.layers.Dense(10)(x)
 outputs = tf.keras.layers.Activation('softmax', dtype='float32', name='predictions')(x)
 
-reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_acc', patience=5, verbose=1)
-early_stop = tf.keras.callbacks.EarlyStopping(patience=15, min_delta=1e-2, verbose=1, restore_best_weights=True, monitor='val_acc')
 
 model = tf.keras.models.Model(inputs=base_model.input, outputs=outputs)
+cp = tf.keras.callbacks.ModelCheckpoint(
+    filepath='base_model_cifar10(32x32)_vgg16.h5',
+    save_weights_only=False,
+    monitor='val_acc',
+    mode='auto',
+    save_best_only=True)
 
 
-
-epochs = 8
-lr = 2e-3
-steps = np.ceil(50000 / global_batch_size) * epochs
-lr_schedule = OneCycleScheduler(lr, steps)
-
-model.compile(tf.keras.optimizers.SGD(lr, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
-model.fit(train_dataset,
-          epochs=epochs, 
-          steps_per_epoch=TRAIN_SIZE//global_batch_size, 
-          validation_data=test_dataset, 
-          validation_steps=10000//global_batch_size, 
-          callbacks=[lr_schedule, early_stop, reduce_lr])
-
-for layer in base_model.layers:
-	layer.trainable = True
-
-epochs = 50
+epochs = 100
 lr = 1e-2
 steps = np.ceil(50000 / global_batch_size) * epochs
 lr_schedule = OneCycleScheduler(lr, steps)
 
 model.compile(tf.keras.optimizers.SGD(lr, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
 model.fit(train_dataset,
-          epochs=epochs, 
-          steps_per_epoch=TRAIN_SIZE//global_batch_size, 
-          validation_data=test_dataset, 
-          validation_steps=10000//global_batch_size, 
-          callbacks=[lr_schedule, early_stop, reduce_lr])
+          epochs=epochs,
+          steps_per_epoch=TRAIN_SIZE//global_batch_size,
+          validation_data=test_dataset,
+          validation_steps=10000//global_batch_size,
+          callbacks=[lr_schedule, cp])
 
-lr_schedule.plot()
+for layer in base_model.layers:
+	layer.trainable = True
 
+epochs = 100
+lr = 1e-3
+steps = np.ceil(50000 / global_batch_size) * epochs
+lr_schedule = OneCycleScheduler(lr, steps)
 
-model.save('base_model_cifar10(32x32)_vgg16.h5')
+model.compile(tf.keras.optimizers.SGD(lr, momentum=0.9, nesterov=True), loss="categorical_crossentropy", metrics=['acc'])
+model.fit(train_dataset,
+          epochs=epochs,
+          steps_per_epoch=TRAIN_SIZE//global_batch_size,
+          validation_data=test_dataset,
+          validation_steps=10000//global_batch_size,
+          callbacks=[lr_schedule, cp])

@@ -1,7 +1,7 @@
 #%%
-import ptvsd
-ptvsd.enable_attach(address=('0.0.0.0', 5678))
-ptvsd.wait_for_attach()
+#import ptvsd
+#ptvsd.enable_attach(address=('0.0.0.0', 5678))
+#ptvsd.wait_for_attach()
 
 import os
 #os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -9,6 +9,7 @@ import os
 import tensorflow as tf
 
 from tensorflow.keras.applications import vgg16
+from tensorflow.keras.applications.vgg16 import preprocess_input
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow_datasets as tfds
@@ -16,6 +17,7 @@ physical_devices = tf.config.experimental.list_physical_devices('GPU')
 assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 import math
+import time
 
 
 #used to fix bug in keras preprocessing scope
@@ -25,18 +27,17 @@ import math
 IMAGE_SIZE = (32, 32)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
-BATCH_SIZE_PER_GPU = 64
+BATCH_SIZE_PER_GPU = 256
 global_batch_size = (BATCH_SIZE_PER_GPU * 1)
 NUM_CLASSES = 10
-TEST = 1
+TEST = 10
 EPOCHS = 20 if TEST == 1 else 2
 
 
-def normalize_production(x):
-	mean = 120.707
-	std = 64.15
-
-	return (x - mean) / (std + 1e-7)
+#used to fix bug in keras preprocessing scope
+temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
+preprocess_input(temp)
+print("processed")
 
 def flip(x: tf.Tensor) -> tf.Tensor:
     """Flip augmentation
@@ -111,7 +112,7 @@ def zoom(x: tf.Tensor) -> tf.Tensor:
     return tf.cond(choice < 0.5, lambda: x, lambda: random_crop(x))
 
 def normalize(input_image):
-  return normalize_production(input_image)
+  return preprocess_input(input_image)
 
 @tf.function
 def load_image_train(datapoint):
@@ -294,7 +295,7 @@ test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/original")
 with writer.as_default():
-    model = tf.keras.models.load_model('./cifar-vgg/cifar10vgg_pretrained.h5')
+    model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
     model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
     OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
     tf.summary.scalar(name='model_acc', data=OG[1], step=0)
@@ -320,14 +321,14 @@ for i, layer in enumerate(model.layers):
 pprint.pprint(targets)
 
 
-
-for target in targets[1::]:
+tik = time.time()
+for target in targets:
 
     writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/{target['name']}")
     with writer.as_default():
         print(f"training layer {target['name']}")
         tf.keras.backend.clear_session()
-        model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
+        model = tf.keras.models.load_model('base_model_cifar10_32_vgg16.h5')
         in_layer = target['layer']
         get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
                                                                 model.layers[in_layer].output])
@@ -343,10 +344,10 @@ for target in targets[1::]:
 
         MSE = tf.losses.MeanSquaredError()
 
-        optimizer=tf.keras.optimizers.SGD(.00001, momentum=.9, nesterov=True)
+        optimizer=tf.keras.optimizers.SGD(1e-5, momentum=.9, nesterov=True)
         replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
-        reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
+        reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=1e-7, factor=.3, verbose=1)
         early_stop = tf.keras.callbacks.EarlyStopping(patience=15, min_delta=.0001, restore_best_weights=True, verbose=1)
 
         replacement_layers.save('/tmp/layer.h5')
@@ -354,7 +355,7 @@ for target in targets[1::]:
         for epoch in range(EPOCHS + 1):
 
             tf.keras.backend.clear_session()
-            model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
+            model = tf.keras.models.load_model('base_model_cifar10_32_vgg16.h5')
             in_layer = target['layer']
             get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
                                                                     model.layers[in_layer].output])
@@ -381,7 +382,7 @@ for target in targets[1::]:
 
             tf.keras.backend.clear_session()
 
-            model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
+            model = tf.keras.models.load_model('base_model_cifar10_32_vgg16.h5')
             layer_name = target['name']
             layer_pos = target['layer']
             filters = model.layers[layer_pos].output.shape[-1]
@@ -407,9 +408,14 @@ for target in targets[1::]:
 
 
 
+tok = time.time()
+
+total_time = tok - tik
+with open('single_gpu_time.txt', 'w') as f:
+    f.write(f'singe gpu time {total_time}')
 
 tf.keras.backend.clear_session()
-model = tf.keras.models.load_model('./cifar-vgg/cifar10vgg_pretrained.h5')
+model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
 
 
 writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_32/final_model")
@@ -427,7 +433,7 @@ with writer.as_default():
         new_model.layers[layer_pos].set_weights(target['weights'][0])
         new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
 
-        new_model.save('cifar10_vgg_modified.h5')
+        new_model.save('cifar10_vgg_modified_32.h5')
         tf.keras.backend.clear_session()
         model = tf.keras.models.load_model('cifar10_vgg_modified_32.h5')
 
@@ -442,6 +448,9 @@ with writer.as_default():
     writer.flush()
 
 
+
+
+
 #%%
 # for target in targets:
 
@@ -449,7 +458,7 @@ with writer.as_default():
 
 #     tf.keras.backend.clear_session()
 
-#     model = tf.keras.models.load_model('cifar-vgg/cifar10vgg_pretrained.h5')
+#     model = tf.keras.models.load_model('base_model_cifar10_32_vgg16.h5')
 
 #     layer_name = target['name']
 #     layer_pos = target['layer']

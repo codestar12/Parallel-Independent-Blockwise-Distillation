@@ -6,10 +6,10 @@ import tensorflow_datasets as tfds
 
 temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
 preprocess_input(temp)
-IMAGE_SIZE = (224, 224)
+IMAGE_SIZE = (32, 32)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
-BATCH_SIZE_PER_GPU = 32
+BATCH_SIZE_PER_GPU = 256
 global_batch_size = (BATCH_SIZE_PER_GPU * 1)
 NUM_CLASSES = 10
 TEST = 100
