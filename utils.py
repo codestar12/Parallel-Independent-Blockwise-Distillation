@@ -3,18 +3,11 @@ from tensorflow.keras.applications.vgg16 import preprocess_input
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow_datasets as tfds
+from typing import Tuple
+import math
 
 temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
 preprocess_input(temp)
-IMAGE_SIZE = (32, 32)
-TRAIN_SIZE = 50000
-VALIDATION_SIZE = 10000
-BATCH_SIZE_PER_GPU = 256
-global_batch_size = (BATCH_SIZE_PER_GPU * 1)
-NUM_CLASSES = 10
-TEST = 100
-EPOCHS = 64 if TEST == 1 else 2
-NUM_PROC = 2
 
 def flip(x: tf.Tensor) -> tf.Tensor:
     """Flip augmentation
@@ -57,7 +50,7 @@ def rotate(x: tf.Tensor) -> tf.Tensor:
 
     return tf.image.rot90(x, tf.random.uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
 
-def zoom(x: tf.Tensor) -> tf.Tensor:
+def zoom(x: tf.Tensor, image_size: Tuple[int, int]) -> tf.Tensor:
     """Zoom augmentation
 
     Args:
@@ -67,7 +60,7 @@ def zoom(x: tf.Tensor) -> tf.Tensor:
         Augmented image
     """
 
-    # Generate 20 crop settings, ranging from a 1% to 20% crop.
+    # Generate 20 crop settings, ranging from a 1% to 20% cropa
     scales = list(np.arange(0.8, 1.0, 0.01))
     boxes = np.zeros((len(scales), 4))
 
@@ -76,9 +69,9 @@ def zoom(x: tf.Tensor) -> tf.Tensor:
         x2 = y2 = 0.5 + (0.5 * scale)
         boxes[i] = [x1, y1, x2, y2]
 
-    def random_crop(img):
+    def random_crop(img, image_size):
         # Create different crops for an image
-        crops = tf.image.crop_and_resize([img], boxes=boxes, box_indices=np.zeros(len(scales)), crop_size=IMAGE_SIZE)
+        crops = tf.image.crop_and_resize([img], boxes=boxes, box_indices=np.zeros(len(scales)), crop_size=image_size)
         # Return a random crop
         return crops[tf.random.uniform(shape=[], minval=0, maxval=len(scales), dtype=tf.int32)]
 
@@ -86,73 +79,52 @@ def zoom(x: tf.Tensor) -> tf.Tensor:
     choice = tf.random.uniform(())
 
     # Only apply cropping 50% of the time
-    return tf.cond(choice < 0.5, lambda: x, lambda: random_crop(x))
+    return tf.cond(choice < 0.5, lambda: x, lambda: random_crop(x, image_size))
 
 def normalize(input_image):
   return preprocess_input(input_image)
 
 @tf.function
-def load_image_train(datapoint):
-  input_image, label = tf.image.resize(datapoint["image"], IMAGE_SIZE), datapoint['label']
+def load_image_train(datapoint, image_size: Tuple[int, int], num_classes: int):
+  input_image, label = tf.image.resize(datapoint["image"], image_size), datapoint['label']
   # if tf.random.uniform(()) > 0.5:
   #   input_image = tf.image.flip_left_right(input_image)
-  augmentations = [flip, color, zoom, rotate]
+  augmentations = [flip, color, rotate]
   for f in augmentations:
     input_image = tf.cond(tf.random.uniform(()) > 0.75, lambda: f(input_image), lambda: input_image)
 
+  input_image = tf.cond(tf.random.uniform(()) > 0.75, lambda: zoom(input_image, image_size), lambda: input_image)
+
   #input_image = preprocess_input(input_image)
   input_image = normalize(input_image)
 
-  return input_image, tf.one_hot(label, depth=NUM_CLASSES)
+  return input_image, tf.one_hot(label, depth=num_classes)
 
 @tf.function
-def load_image_test(datapoint):
-  input_image, label = tf.image.resize(datapoint["image"], IMAGE_SIZE), datapoint['label']
+def load_image_test(datapoint, image_size: Tuple[int, int], num_classes: int):
+  input_image, label = tf.image.resize(datapoint["image"], image_size), datapoint['label']
   #input_image = preprocess_input(input_image)
 
   input_image = normalize(input_image)
 
-  return input_image, tf.one_hot(label, depth=NUM_CLASSES)
+  return input_image, tf.one_hot(label, depth=num_classes)
 
 class LayerBatch(tf.keras.utils.Sequence):
 
-    def __init__(self, input_model, dataset):
-        self.input_model = input_model
-        self.dataset = dataset.__iter__()
+	def __init__(self, input_model, dataset, data_size: int, batch_size: int):
+		self.input_model = input_model
+		self.dataset = dataset.__iter__()
+		self.data_size = data_size
+		self.batch_size = batch_size
 
-    def __len__(self):
-        return math.ceil(TRAIN_SIZE // global_batch_size )
+	def __len__(self):
+		return math.ceil(self.data_size // self.batch_size)
 
-    def __getitem__(self, index):
-        X, y = self.input_model(next(self.dataset))
-        return X, y
+	def __getitem__(self, index):
+		X, y = self.input_model(next(self.dataset))
+		return X, y
 
-class LayerBatchSynth(tf.keras.utils.Sequence):
 
-    def __init__(self, input_model, dataset):
-        self.input_model = input_model
-        self.dataset = dataset.__iter__()
-
-    def __len__(self):
-        return math.ceil(4224 // global_batch_size )
-
-    def __getitem__(self, index):
-        X, y = self.input_model(next(self.dataset))
-        return X, y
-
-import math
-class LayerTest(tf.keras.utils.Sequence):
-
-    def __init__(self, input_model, dataset):
-        self.input_model = input_model
-        self.dataset = dataset.__iter__()
-
-    def __len__(self):
-        return math.ceil(VALIDATION_SIZE // global_batch_size )
-
-    def __getitem__(self, index):
-        X, y = self.input_model(next(self.dataset))
-        return X, y
 
 def add_layers(inputs, filters, layers=2):
     print(inputs.get_shape())

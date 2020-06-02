@@ -15,7 +15,7 @@ assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
 for i in range(len(physical_devices)):
         tf.config.experimental.set_memory_growth(physical_devices[i], True)
 import tensorflow_datasets as tfds
-from utils import load_image_train, load_image_test, build_replacement, LayerBatch, LayerTest, replac, replace_layer
+from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 
 import time
 
@@ -28,7 +28,8 @@ NUM_CLASSES = 10
 TEST = 1
 EPOCHS = 20 if TEST == 1 else 2
 NUM_PROC = 2
-
+EARLY_STOPPING = False
+SUMMARY_PATH = ""
 
 def train_layer(target, rank=0):
 
@@ -44,15 +45,15 @@ def train_layer(target, rank=0):
 
 	dataset, info = tfds.load('cifar10', with_info=True)
 
-	train = dataset['train'].map(load_image_train, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel_3/{target['name']}")
+	writer = tf.summary.create_file_writer(SUMMARY_PATH + f"{target['name']}")
 	with writer.as_default():
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
@@ -66,8 +67,8 @@ def train_layer(target, rank=0):
 
 		replacement_layers = build_replacement(get_output, layers=2)
 		replacement_len = len(replacement_layers.layers)
-		layer_train_gen = LayerBatch(get_output, train_dataset)
-		layer_test_gen = LayerTest(get_output, test_dataset)
+		layer_train_gen = LayerBatch(get_output, train_dataset, TRAIN_SIZE, global_batch_size)
+		layer_test_gen = LayerBatch(get_output, test_dataset, VALIDATION_SIZE, global_batch_size)
 
 
 
@@ -83,7 +84,7 @@ def train_layer(target, rank=0):
 		replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
 		print('epochs started')
-		for epoch in range(EPOCHS + 1):
+		for epoch in range(EPOCHS):
 
 			tf.keras.backend.clear_session()
 			model = tf.keras.models.load_model('base_model_cifar10_32_vgg16.h5')
@@ -93,8 +94,8 @@ def train_layer(target, rank=0):
 
 
 
-			layer_train_gen = LayerBatch(get_output, train_dataset)
-			layer_test_gen = LayerTest(get_output, test_dataset)
+			layer_train_gen = LayerBatch(get_output, train_dataset, TRAIN_SIZE, global_batch_size)
+			layer_test_gen = LayerBatch(get_output, test_dataset, VALIDATION_SIZE, global_batch_size)
 
 			replacement_layers = tf.keras.models.load_model(f'/tmp/layer_{rank}.h5')
 
@@ -140,7 +141,38 @@ if __name__ == '__main__':
 	import json
 	import functools
 	import operator
-	import tensorflow_datasets as tfds
+	import tensorflow_datasets as tfds	
+	import argparse
+	
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-im", "--image_size", type=int,
+						help="dataset image size", default=32)
+	parser.add_argument("-ts", "--train_size", type=int, 
+						help="dataset training split size", default=50000)
+	parser.add_argument("-vs", "--val_size", type=int, 
+						help="dataset validation split size", default=10000)
+	parser.add_argument("-bs", "--batch_size", type=int, 
+						help="batch size", default=256)
+	parser.add_argument("-nc", "--num_classes", type=int, default=10)
+	parser.add_argument("-ep", "--epochs", type=int, default=40)
+	parser.add_argument("-es", "--early_stopping", type=bool, default=False)
+	parser.add_argument("-tm", "--test_multiplier", type=int, default=1,
+						help="multipler to speed up training when testing")
+	parser.add_argument("-sp", "--summary_path", type=str, default="./summarys/vgg/")
+	parser.add_argument("-tp", "--timing_path", type=str, help="file name and path for saving timing data")
+	
+	args = parser.parse_args()
+	IMAGE_SIZE = (args.image_size, args.image_size)
+	TRAIN_SIZE = args.train_size
+	VALIDATION_SIZE = args.val_size
+	global_batch_size = args.batch_size
+	NUM_CLASSES = args.num_classes
+	EPOCHS = args.epochs
+	EARLY_STOPPING = args.early_stopping
+	TEST = args.test_multiplier
+	SUMMARY_PATH = args.summary_path
+	timing_path = args.timing_path
+
 	with open('targets.json', 'r') as f:
 		targets = json.load(f)
 
@@ -166,8 +198,10 @@ if __name__ == '__main__':
 		tok = time.time()
 		total_time = tok - tik
 
-		with open('4_gpu_time.txt', 'w') as f:
-		    f.write(f'4 gpu time {total_time}')
+		if timing_path is not None:
+
+			with open(timing_path, 'w') as f:
+				f.write(f'time: {total_time} s')
 
 		targets = functools.reduce(operator.iconcat, targets, [])
 
@@ -177,7 +211,7 @@ if __name__ == '__main__':
 		model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
 
 
-		writer = tf.summary.create_file_writer(f"./summarys/vgg/cifar10_parallel_3/final_model")
+		writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
 		with writer.as_default():
 			for target in targets[::-1]:
 				print(f'replacing layer {target["name"]}')
@@ -198,7 +232,7 @@ if __name__ == '__main__':
 
 			tf.keras.backend.clear_session()
 
-			test_dataset = dataset['test'].map(load_image_test, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+			test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 			test_dataset = test_dataset.batch(global_batch_size).repeat()
 			test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
