@@ -8,6 +8,7 @@ for i in range(len(physical_devices)):
         tf.config.experimental.set_memory_growth(physical_devices[i], True)
 import tensorflow_datasets as tfds
 from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
+import numpy as np
 
 import time
 
@@ -22,7 +23,7 @@ EPOCHS = 20 if TEST == 1 else 2
 NUM_PROC = 2
 EARLY_STOPPING = False
 SUMMARY_PATH = ""
-
+OG = None
 
 def train_layer(target, rank=0):
 
@@ -127,6 +128,11 @@ def train_layer(target, rank=0):
 			writer.flush()
 			print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
 
+			if EARLY_STOPPING:
+				if np.abs(OG[1] - target['score'][1] < 0.001):
+					print('stoping early')
+					break
+
 	return target
 
 
@@ -170,13 +176,23 @@ if __name__ == '__main__':
 	with open('targets.json', 'r') as f:
 		targets = json.load(f)
 
+	#need the dataset file to be loaded before training
+	dataset, info = tfds.load('cifar10', with_info=True)
 
+	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.batch(global_batch_size).repeat()
+	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+
+	model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
+	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
+	OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
+	del model
+	tf.keras.backend.clear_session()
 
 	tik = time.time()
 
 
-		#need the dataset file to be loaded before training
-	dataset, info = tfds.load('cifar10', with_info=True)
 
 
 
