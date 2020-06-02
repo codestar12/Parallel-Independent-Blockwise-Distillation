@@ -16,6 +16,7 @@ for i in range(len(physical_devices)):
         tf.config.experimental.set_memory_growth(physical_devices[i], True)
 import tensorflow_datasets as tfds
 from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
+import numpy as np
 
 import time
 
@@ -194,7 +195,7 @@ if __name__ == '__main__':
 		test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-		model = tf.keras.models.load_model('./base_model_cifar10_vgg16.h5')
+		model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
 		model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 		OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
 		del model
