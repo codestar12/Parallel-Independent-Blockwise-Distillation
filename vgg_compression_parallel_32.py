@@ -77,7 +77,7 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		optimizer=tf.keras.optimizers.SGD(.00001, momentum=.9, nesterov=True)
+		optimizer=tf.keras.optimizers.SGD(.0001, momentum=.9, nesterov=True)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
 		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
@@ -138,7 +138,7 @@ def train_layer(target, rank=0):
 
 			if EARLY_STOPPING:
 				print(f"\n\n\ndifference between original and layer is {OG[1] - target['score'][1]}")
-				if OG[1] - target['score'][1] < 0.001:
+				if OG[1] - target['score'][1] < 0.002:
 					print('stoping early')
 					break
 
