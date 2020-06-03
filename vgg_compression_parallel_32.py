@@ -137,10 +137,10 @@ def train_layer(target, rank=0):
 			print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
 
 			if EARLY_STOPPING:
-			    print(f"\n\n\ndifference between original and layer is {OG[1] - target['score'][1]}")
-			    if OG[1] - target['score'][1] < 0.001:
-				print('stoping early')
-				break
+				print(f"\n\n\ndifference between original and layer is {OG[1] - target['score'][1]}")
+				if OG[1] - target['score'][1] < 0.001:
+					print('stoping early')
+					break
 
 	return target
 
