@@ -44,7 +44,7 @@ def train_layer(target, rank=0):
 		target: Updated dictonary
 	"""
 
-
+	layer_start = time.time()
 	dataset, info = tfds.load('cifar10', with_info=True)
 
 	train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -141,7 +141,9 @@ def train_layer(target, rank=0):
 				if OG[1] - target['score'][1] < 0.002:
 					print('stoping early')
 					break
-
+	layer_end = time.time()
+	layer_time = layer_start - layer_end
+	target['run_time'] = layer_time
 	return target
 
 
@@ -216,9 +218,10 @@ if __name__ == '__main__':
 		total_time = tok - tik
 
 		if timing_path is not None:
-
+			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time']} for target in targets]
+			timing_dump.append({'total_time': total_time})
 			with open(timing_path, 'w') as f:
-				f.write(f'time: {total_time} s')
+				json.dump(timing_dump, f, indent='\t')
 
 		targets = functools.reduce(operator.iconcat, targets, [])
 
