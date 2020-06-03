@@ -69,7 +69,7 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		optimizer=tf.keras.optimizers.SGD(.0001, momentum=.9, nesterov=True)
+		optimizer=tf.keras.optimizers.RMSprop(2e-3)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
 		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
@@ -142,15 +142,15 @@ if __name__ == '__main__':
 	import operator
 	import tensorflow_datasets as tfds
 	import argparse
-	
+
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-im", "--image_size", type=int,
 						help="dataset image size", default=32)
-	parser.add_argument("-ts", "--train_size", type=int, 
+	parser.add_argument("-ts", "--train_size", type=int,
 						help="dataset training split size", default=50000)
-	parser.add_argument("-vs", "--val_size", type=int, 
+	parser.add_argument("-vs", "--val_size", type=int,
 						help="dataset validation split size", default=10000)
-	parser.add_argument("-bs", "--batch_size", type=int, 
+	parser.add_argument("-bs", "--batch_size", type=int,
 						help="batch size", default=256)
 	parser.add_argument("-nc", "--num_classes", type=int, default=10)
 	parser.add_argument("-ep", "--epochs", type=int, default=40)
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 						help="multipler to speed up training when testing")
 	parser.add_argument("-sp", "--summary_path", type=str, default="./summarys/vgg/")
 	parser.add_argument("-tp", "--timing_path", type=str, help="file name and path for saving timing data")
-	
+
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
 	TRAIN_SIZE = args.train_size
