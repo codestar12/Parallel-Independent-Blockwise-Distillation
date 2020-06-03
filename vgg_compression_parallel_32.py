@@ -144,6 +144,7 @@ def train_layer(target, rank=0):
 	layer_end = time.time()
 	layer_time = layer_end - layer_start
 	target['run_time'] = layer_time
+	target['rank'] = rank
 	return target
 
 
@@ -223,7 +224,7 @@ if __name__ == '__main__':
 		list.sort(targets, key=lambda target: target['layer'])
 
 		if timing_path is not None:
-			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time']} for target in targets]
+			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
 			timing_dump.append({'total_time': total_time})
 			with open(timing_path, 'w') as f:
 				json.dump(timing_dump, f, indent='\t')
