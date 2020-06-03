@@ -133,7 +133,7 @@ def train_layer(target, rank=0):
 					print('stoping early')
 					break
 	layer_end = time.time()
-	layer_time = layer_start - layer_end
+	layer_time = layer_end - layer_start
 	target['run_time'] = layer_time
 	return target
 
