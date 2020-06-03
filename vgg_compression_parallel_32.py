@@ -31,7 +31,7 @@ EPOCHS = 20 if TEST == 1 else 2
 NUM_PROC = 2
 EARLY_STOPPING = False
 SUMMARY_PATH = ""
-OG = None
+OG = []
 
 def train_layer(target, rank=0):
 
@@ -135,11 +135,12 @@ def train_layer(target, rank=0):
 
 			writer.flush()
 			print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
-			
+
 			if EARLY_STOPPING:
-				if np.abs(OG[1] - target['score'][1] < 0.001):
-					print('stoping early')
-					break
+			    print(f"\n\n\ndifference between original and layer is {OG[1] - target['score'][1]}")
+			    if OG[1] - target['score'][1] < 0.001:
+				print('stoping early')
+				break
 
 	return target
 
@@ -148,17 +149,17 @@ if __name__ == '__main__':
 	import json
 	import functools
 	import operator
-	import tensorflow_datasets as tfds	
+	import tensorflow_datasets as tfds
 	import argparse
-	
+
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-im", "--image_size", type=int,
 						help="dataset image size", default=32)
-	parser.add_argument("-ts", "--train_size", type=int, 
+	parser.add_argument("-ts", "--train_size", type=int,
 						help="dataset training split size", default=50000)
-	parser.add_argument("-vs", "--val_size", type=int, 
+	parser.add_argument("-vs", "--val_size", type=int,
 						help="dataset validation split size", default=10000)
-	parser.add_argument("-bs", "--batch_size", type=int, 
+	parser.add_argument("-bs", "--batch_size", type=int,
 						help="batch size", default=256)
 	parser.add_argument("-nc", "--num_classes", type=int, default=10)
 	parser.add_argument("-ep", "--epochs", type=int, default=40)
@@ -167,7 +168,7 @@ if __name__ == '__main__':
 						help="multipler to speed up training when testing")
 	parser.add_argument("-sp", "--summary_path", type=str, default="./summarys/vgg/")
 	parser.add_argument("-tp", "--timing_path", type=str, help="file name and path for saving timing data")
-	
+
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
 	TRAIN_SIZE = args.train_size
@@ -184,26 +185,24 @@ if __name__ == '__main__':
 		targets = json.load(f)
 
 
+	dataset, info = tfds.load('cifar10', with_info=True)
+	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.batch(global_batch_size).repeat()
+	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+
+	model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
+	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
+	OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
+	del model
+	tf.keras.backend.clear_session()
 
 	if rank == 0:
 
-
-		#need the dataset file to be loaded before training
-		dataset, info = tfds.load('cifar10', with_info=True)
-		test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-		test_dataset = test_dataset.batch(global_batch_size).repeat()
-		test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
-
-		model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
-		model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
-		OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
-		del model
-		tf.keras.backend.clear_session()
-		
 		tik = time.time()
 
-	comm.bcast(OG, root=0)
+
+	print(f"OG IS : {OG}\n")
 
 	with tf.device(f'/GPU:{rank}'):
 		targets = [train_layer(targets[i], rank) for i in range(rank, len(targets), size)]
