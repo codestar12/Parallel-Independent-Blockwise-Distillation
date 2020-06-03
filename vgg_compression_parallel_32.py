@@ -217,15 +217,16 @@ if __name__ == '__main__':
 		tok = time.time()
 		total_time = tok - tik
 
+
+		targets = functools.reduce(operator.iconcat, targets, [])
+
+		list.sort(targets, key=lambda target: target['layer'])
+
 		if timing_path is not None:
 			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time']} for target in targets]
 			timing_dump.append({'total_time': total_time})
 			with open(timing_path, 'w') as f:
 				json.dump(timing_dump, f, indent='\t')
-
-		targets = functools.reduce(operator.iconcat, targets, [])
-
-		list.sort(targets, key=lambda target: target['layer'])
 
 		tf.keras.backend.clear_session()
 		model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
