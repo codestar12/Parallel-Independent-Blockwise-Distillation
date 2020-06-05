@@ -1,0 +1,66 @@
+[
+	{
+		"name": "conv2_block1_2_conv",
+		"layer": 10
+	},
+	{
+		"name": "conv2_block2_2_conv",
+		"layer": 22
+	},
+	{
+		"name": "conv2_block3_2_conv",
+		"layer": 32
+	},
+	{
+		"name": "conv3_block1_2_conv",
+		"layer": 42
+	},
+	{
+		"name": "conv3_block2_2_conv",
+		"layer": 54
+	},
+	{
+		"name": "conv3_block3_2_conv",
+		"layer": 64
+	},
+	{
+		"name": "conv3_block4_2_conv",
+		"layer": 74
+	},
+	{
+		"name": "conv4_block1_2_conv",
+		"layer": 84
+	},
+	{
+		"name": "conv4_block2_2_conv",
+		"layer": 96
+	},
+	{
+		"name": "conv4_block3_2_conv",
+		"layer": 106
+	},
+	{
+		"name": "conv4_block4_2_conv",
+		"layer": 116
+	},
+	{
+		"name": "conv4_block5_2_conv",
+		"layer": 126
+	},
+	{
+		"name": "conv4_block6_2_conv",
+		"layer": 136
+	},
+	{
+		"name": "conv5_block1_2_conv",
+		"layer": 146
+	},
+	{
+		"name": "conv5_block2_2_conv",
+		"layer": 158
+	},
+	{
+		"name": "conv5_block3_2_conv",
+		"layer": 168
+	}
+]

@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.applications.vgg16 import preprocess_input
+from tensorflow.keras.applications.resnet import preprocess_input
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow_datasets as tfds
@@ -82,7 +82,7 @@ def zoom(x: tf.Tensor, image_size: Tuple[int, int]) -> tf.Tensor:
     return tf.cond(choice < 0.5, lambda: x, lambda: random_crop(x, image_size))
 
 def normalize(input_image):
-  return input_image/225 - (0.4913997551666284, 0.48215855929893703, 0.4465309133731618)
+  return preprocess_input(input_image)
 
 @tf.function
 def load_image_train(datapoint, image_size: Tuple[int, int], num_classes: int):
