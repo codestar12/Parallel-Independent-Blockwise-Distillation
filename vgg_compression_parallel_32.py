@@ -171,6 +171,7 @@ if __name__ == '__main__':
 						help="multipler to speed up training when testing")
 	parser.add_argument("-sp", "--summary_path", type=str, default="./summarys/vgg/")
 	parser.add_argument("-tp", "--timing_path", type=str, help="file name and path for saving timing data")
+	parser.add_argument("-sd", "--schedule", type=str, help="file name and path for schedule")
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
@@ -183,6 +184,7 @@ if __name__ == '__main__':
 	TEST = args.test_multiplier
 	SUMMARY_PATH = args.summary_path
 	timing_path = args.timing_path
+	schedule = args.schedule
 
 	with open('targets.json', 'r') as f:
 		targets = json.load(f)
@@ -200,15 +202,25 @@ if __name__ == '__main__':
 	del model
 	tf.keras.backend.clear_session()
 
-	if rank == 0:
+	my_layers = []
+	# either load a schedule from json for each GPU or
+	# assign one based on cyclic assignment
+	if schedule is not None:
+		with open(schedule, 'r') as f:
+			schedules = json.load(f)
+		my_layers = schedule[str(rank)]
+	else:
+		my_layers = [i for i in range(rank, len(targets), size)]
+		
 
+	if rank == 0:
 		tik = time.time()
 
 
 	print(f"OG IS : {OG}\n")
 
 	with tf.device(f'/GPU:{rank}'):
-		targets = [train_layer(targets[i], rank) for i in range(rank, len(targets), size)]
+		targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
 
 
 	targets = comm.gather(targets, root=0)
