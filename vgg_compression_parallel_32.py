@@ -208,7 +208,7 @@ if __name__ == '__main__':
 	if schedule is not None:
 		with open(schedule, 'r') as f:
 			schedules = json.load(f)
-		my_layers = schedule[str(rank)]
+		my_layers = schedules[str(rank)]
 	else:
 		my_layers = [i for i in range(rank, len(targets), size)]
 		
