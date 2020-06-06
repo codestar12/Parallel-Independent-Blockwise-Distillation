@@ -17,7 +17,7 @@ for i in range(len(physical_devices)):
 import tensorflow_datasets as tfds
 from utils_resnet import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 import numpy as np
-
+import math
 import time
 
 IMAGE_SIZE = (64, 64)
@@ -77,7 +77,7 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		optimizer=tf.keras.optimizers.RMSprop(2e-3)
+		optimizer=tf.keras.optimizers.RMSprop(2e-2)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
 		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
@@ -196,7 +196,7 @@ if __name__ == '__main__':
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-	model = tf.keras.models.load_model('./base_model_cifar10_32_vgg16.h5')
+	model = tf.keras.models.load_model('cifar10.h5')
 	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 	OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
 	del model
