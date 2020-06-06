@@ -210,7 +210,7 @@ if __name__ == '__main__':
 			schedules = json.load(f)
 		my_layers = schedules[str(rank)]
 	else:
-		my_layers = [target['layer'] for target in targets]
+		my_layers = [targets[i]['layer'] for i in range(rank, len(targets), size)]
 
 
 	if rank == 0:
