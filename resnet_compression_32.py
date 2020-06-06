@@ -69,7 +69,7 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		optimizer=tf.keras.optimizers.RMSprop(2e-3)
+		optimizer=tf.keras.optimizers.RMSprop(2e-2)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
 		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)

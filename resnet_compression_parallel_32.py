@@ -20,7 +20,7 @@ import numpy as np
 
 import time
 
-IMAGE_SIZE = (32, 32)
+IMAGE_SIZE = (64, 64)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
 BATCH_SIZE_PER_GPU = 512
@@ -211,7 +211,7 @@ if __name__ == '__main__':
 		my_layers = schedules[str(rank)]
 	else:
 		my_layers = [i for i in range(rank, len(targets), size)]
-		
+
 
 	if rank == 0:
 		tik = time.time()
