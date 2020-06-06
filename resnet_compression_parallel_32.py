@@ -218,8 +218,9 @@ if __name__ == '__main__':
 
 
 	print(f"OG IS : {OG}\n")
-
+	
 	with tf.device(f'/GPU:{rank}'):
+		print(f'here from {rank}')
 		targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
 
 
