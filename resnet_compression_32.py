@@ -71,7 +71,7 @@ def train_layer(target, rank=0):
 
 		starting_lr = 2e-2
 		initial_learning_rate = 0.1
-		lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 			starting_lr,
 			decay_steps=3000,
 			decay_rate=0.96,
