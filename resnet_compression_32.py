@@ -80,8 +80,6 @@ def train_layer(target, rank=0):
 		optimizer=tf.keras.optimizers.RMSprop(lr_schedule)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
-		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
-		early_stop = tf.keras.callbacks.EarlyStopping(patience=15, min_delta=.0001, restore_best_weights=True, verbose=1)
 
 		replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
@@ -107,9 +105,8 @@ def train_layer(target, rank=0):
 										steps_per_epoch=math.ceil(TRAIN_SIZE / global_batch_size / TEST),
 										validation_data=layer_test_gen,
 										shuffle=False,
-										callbacks=[reduce_lr, early_stop],
 										validation_steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST),
-										verbose=1)
+										verbose=2)
 
 			tf.summary.scalar(name='rep_loss', data=history.history['loss'][0], step=epoch)
 			tf.summary.scalar(name='val_loss', data=history.history['val_loss'][0], step=epoch)
