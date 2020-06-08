@@ -40,7 +40,7 @@ def train_layer(target, rank=0):
 	dataset, info = tfds.load('cifar10', with_info=True)
 
 	train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	train_dataset = train.shuffle(buffer_size=1000).batch(global_batch_size).repeat()
+	train_dataset = train.shuffle(buffer_size=TRAIN_SIZE).batch(global_batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -69,7 +69,15 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		optimizer=tf.keras.optimizers.RMSprop(2e-2)
+		starting_lr = 2e-2
+		initial_learning_rate = 0.1
+		lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+			starting_lr,
+			decay_steps=3000,
+			decay_rate=0.96,
+			staircase=True)
+
+		optimizer=tf.keras.optimizers.RMSprop(lr_schedule)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
 		reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(patience=5, min_lr=.0001, factor=.3, verbose=1)
@@ -79,19 +87,19 @@ def train_layer(target, rank=0):
 
 		print('epochs started')
 		for epoch in range(EPOCHS):
+			if epoch % 2 == 0:
+				tf.keras.backend.clear_session()
+				model = tf.keras.models.load_model('cifar10.h5')
+				in_layer = target['layer']
+				get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
+																		model.layers[in_layer].output])
 
-			tf.keras.backend.clear_session()
-			model = tf.keras.models.load_model('cifar10.h5')
-			in_layer = target['layer']
-			get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
-																	model.layers[in_layer].output])
 
 
+				layer_train_gen = LayerBatch(get_output, train_dataset, TRAIN_SIZE, global_batch_size)
+				layer_test_gen = LayerBatch(get_output, test_dataset, VALIDATION_SIZE, global_batch_size)
 
-			layer_train_gen = LayerBatch(get_output, train_dataset, TRAIN_SIZE, global_batch_size)
-			layer_test_gen = LayerBatch(get_output, test_dataset, VALIDATION_SIZE, global_batch_size)
-
-			replacement_layers = tf.keras.models.load_model(f'/tmp/layer_{rank}.h5')
+				replacement_layers = tf.keras.models.load_model(f'/tmp/layer_{rank}.h5')
 
 			print('training started')
 			history = replacement_layers.fit(x=layer_train_gen,
@@ -103,35 +111,39 @@ def train_layer(target, rank=0):
 										validation_steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST),
 										verbose=1)
 
-			replacement_layers.save(f'/tmp/layer_{rank}.h5')
-
-			target['weights'] = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
-
-			tf.keras.backend.clear_session()
-
-			model = tf.keras.models.load_model('cifar10.h5')
-			layer_name = target['name']
-			layer_pos = target['layer']
-			filters = model.layers[layer_pos].output.shape[-1]
-
-			new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
-			new_model.layers[layer_pos].set_weights(target['weights'][0])
-			new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
-			new_model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
-			target['score'] = new_model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
-
 			tf.summary.scalar(name='rep_loss', data=history.history['loss'][0], step=epoch)
 			tf.summary.scalar(name='val_loss', data=history.history['val_loss'][0], step=epoch)
-			tf.summary.scalar(name='model_acc', data=target['score'][1], step=epoch)
-			tf.summary.scalar(name='model_loss', data=target['score'][0], step=epoch)
+
+			if epoch % 2 == 0:
+				replacement_layers.save(f'/tmp/layer_{rank}.h5')
+
+				target['weights'] = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
+
+				tf.keras.backend.clear_session()
+
+				model = tf.keras.models.load_model('cifar10.h5')
+				layer_name = target['name']
+				layer_pos = target['layer']
+				filters = model.layers[layer_pos].output.shape[-1]
+
+				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
+				new_model.layers[layer_pos].set_weights(target['weights'][0])
+				new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
+				new_model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
+				target['score'] = new_model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
+
+				tf.summary.scalar(name='model_acc', data=target['score'][1], step=epoch)
+				tf.summary.scalar(name='model_loss', data=target['score'][0], step=epoch)
+
+				print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
+
+				if EARLY_STOPPING:
+					if np.abs(OG[1] - target['score'][1] < 0.002):
+						print('stoping early')
+						break
 
 			writer.flush()
-			print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
 
-			if EARLY_STOPPING:
-				if np.abs(OG[1] - target['score'][1] < 0.002):
-					print('stoping early')
-					break
 	layer_end = time.time()
 	layer_time = layer_end - layer_start
 	target['run_time'] = layer_time
