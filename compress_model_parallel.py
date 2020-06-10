@@ -53,7 +53,7 @@ def train_layer(target, rank=0):
 	dataset, info = tfds.load('cifar10', with_info=True)
 
 	train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	train_dataset = train.shuffle(buffer_size=TRAIN_SIZE).batch(global_batch_size).repeat()
+	train_dataset = train.shuffle(buffer_size=10000).batch(global_batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
