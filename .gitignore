@@ -1,2 +1,5 @@
 *.h5
 *.ipynb_checkpoints
+summarys/
+.summarys/
+__pycache__/
