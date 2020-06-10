@@ -190,7 +190,7 @@ if __name__ == '__main__':
 						help="model architecture being compressed ex. vgg, resnet",
 						choices=['vgg', 'resnet'], default='resnet')
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
-	parser.add_argument("-tp", "target_file_path", type=str, help="path to target file", default='targets_resnet.json')
+	parser.add_argument("-tp", "--target_file_path", type=str, help="path to target file", default='targets_resnet.json')
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
