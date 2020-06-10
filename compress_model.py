@@ -1,25 +1,3 @@
-
-
-import os
-
-import math
-from mpi4py import MPI
-
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-os.environ['CUDA_VISIBLE_DEVICES'] = str(rank)
-import tensorflow as tf
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
-for i in range(len(physical_devices)):
-        tf.config.experimental.set_memory_growth(physical_devices[i], True)
-import tensorflow_datasets as tfds
-from utils_resnet import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
-import numpy as np
-import math
-import time
-
 IMAGE_SIZE = (64, 64)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
@@ -31,17 +9,37 @@ EPOCHS = 20 if TEST == 1 else 2
 NUM_PROC = 2
 EARLY_STOPPING = False
 SUMMARY_PATH = ""
-OG = []
+OG = None
+ARCH = 'resnet'
+MODEL_PATH = ""
+
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import math
+import tensorflow as tf
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+for i in range(len(physical_devices)):
+        tf.config.experimental.set_memory_growth(physical_devices[i], True)
+import tensorflow_datasets as tfds
+if ARCH == 'resnet': 
+	from utils_resnet import * 
+elif ARCH == 'vgg':
+	from utils import *
+import numpy as np
+import math
+import time
+
 
 def train_layer(target, rank=0):
 
 	"""Trains a replacement layer given a target
 
 	Args:
-		target: A dictionary containing {'name': layer.name, 'layer': i}
+		target: A dictonary containing {'name': layer.name, 'layer': i}
 
 	Returns:
-		target: Updated dictionary
+		target: Updated dictonary
 	"""
 
 	layer_start = time.time()
@@ -60,7 +58,7 @@ def train_layer(target, rank=0):
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
 		print("cleared backend")
-		model = tf.keras.models.load_model('cifar10.h5')
+		model = tf.keras.models.load_model(MODEL_PATH)
 		print("model loaded")
 		in_layer = target['layer']
 		get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
@@ -93,10 +91,9 @@ def train_layer(target, rank=0):
 
 		print('epochs started')
 		for epoch in range(EPOCHS):
-
 			if epoch % 2 == 0:
 				tf.keras.backend.clear_session()
-				model = tf.keras.models.load_model('cifar10.h5')
+				model = tf.keras.models.load_model(MODEL_PATH)
 				in_layer = target['layer']
 				get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
 																		model.layers[in_layer].output])
@@ -127,7 +124,7 @@ def train_layer(target, rank=0):
 
 				tf.keras.backend.clear_session()
 
-				model = tf.keras.models.load_model('cifar10.h5')
+				model = tf.keras.models.load_model(MODEL_PATH)
 				layer_name = target['name']
 				layer_pos = target['layer']
 				filters = model.layers[layer_pos].output.shape[-1]
@@ -144,7 +141,7 @@ def train_layer(target, rank=0):
 				print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
 
 				if EARLY_STOPPING:
-					if OG[1] - target['score'][1] < 0.002:
+					if np.abs(OG[1] - target['score'][1] < 0.002):
 						print('stoping early')
 						break
 
@@ -180,7 +177,10 @@ if __name__ == '__main__':
 						help="multipler to speed up training when testing")
 	parser.add_argument("-sp", "--summary_path", type=str, default="./summarys/vgg/")
 	parser.add_argument("-tp", "--timing_path", type=str, help="file name and path for saving timing data")
-	parser.add_argument("-sd", "--schedule", type=str, help="file name and path for schedule")
+	parser.add_argument("-ar", "--arch", type=str, 
+						help="model architecture being compressed ex. vgg, resnet",
+						choices=['vgg', 'resnet'], default='resnet')
+	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
@@ -193,98 +193,96 @@ if __name__ == '__main__':
 	TEST = args.test_multiplier
 	SUMMARY_PATH = args.summary_path
 	timing_path = args.timing_path
-	schedule = args.schedule
-
-	with open('targets_resnet.json', 'r') as f:
-		targets = json.load(f)
+	ARCH = args.arch
+	MODEL_PATH = args.model_path
 
 
+# 	with open('targets.json', 'r') as f:
+# 		targets = json.load(f)
+
+	#need the dataset file to be loaded before training
 	dataset, info = tfds.load('cifar10', with_info=True)
+
 	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 
-	model = tf.keras.models.load_model('cifar10.h5')
+	model = tf.keras.models.load_model(MODEL_PATH)
+
+	import pprint
+	targets = []
+	for i, layer in enumerate(model.layers):
+		if layer.__class__.__name__ == "Conv2D":
+			if layer.kernel_size[0] == 3:
+                #print(f'{i} layer {layer.name} , kernel size {layer.kernel_size}')
+				targets.append({'name': layer.name, 'layer': i})
+
+	pprint.pprint(targets)
+
 	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
-	OG = model.evaluate(test_dataset, steps=VALIDATION_SIZE//global_batch_size//TEST)
+	OG = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE/global_batch_size/TEST))
 	del model
 	tf.keras.backend.clear_session()
 
-	my_layers = []
-	# either load a schedule from json for each GPU or
-	# assign one based on cyclic assignment
-	if schedule is not None:
-		with open(schedule, 'r') as f:
-			schedules = json.load(f)
-		my_layers = schedules[str(rank)]
-	else:
-		my_layers = [targets[i]['layer'] for i in range(rank, len(targets), size)]
+	tik = time.time()
 
 
-	if rank == 0:
-		tik = time.time()
 
 
-	print(f"OG IS : {OG}\n")
-	print(my_layers)
-	with tf.device(f'/GPU:{rank}'):
-		print(f'here from {rank}')
-		targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
+
+	targets = [train_layer(targets[i]) for i in range(len(targets))]
 
 
-	targets = comm.gather(targets, root=0)
-
-	if rank == 0:
-
-		tok = time.time()
-		total_time = tok - tik
 
 
-		targets = functools.reduce(operator.iconcat, targets, [])
+	tok = time.time()
+	total_time = tok - tik
 
-		list.sort(targets, key=lambda target: target['layer'])
 
-		if timing_path is not None:
-			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
-			timing_dump.append({'total_time': total_time})
-			with open(timing_path, 'w') as f:
-				json.dump(timing_dump, f, indent='\t')
+
+	list.sort(targets, key=lambda target: target['layer'])
+
+	if timing_path is not None:
+		timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
+		timing_dump.append({'total_time': total_time})
+		with open(timing_path, 'w') as f:
+			json.dump(timing_dump, f, indent='\t')
+
+	tf.keras.backend.clear_session()
+	model = tf.keras.models.load_model(MODEL_PATH)
+
+
+	writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
+	with writer.as_default():
+		for target in targets[::-1]:
+			print(f'replacing layer {target["name"]}')
+
+			layer_name = target['name']
+			layer_pos = target['layer']
+			filters = model.layers[layer_pos].output.shape[-1]
+
+
+
+			new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
+			new_model.layers[layer_pos].set_weights(target['weights'][0])
+			new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
+
+			new_model.save('cifar10_resnet_modified.h5')
+			tf.keras.backend.clear_session()
+			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
 
 		tf.keras.backend.clear_session()
-		model = tf.keras.models.load_model('cifar10.h5')
 
+		test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+		test_dataset = test_dataset.batch(global_batch_size).repeat()
+		test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-		writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
-		with writer.as_default():
-			for target in targets[::-1]:
-				print(f'replacing layer {target["name"]}')
+		model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
+		model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
+		final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
-				layer_name = target['name']
-				layer_pos = target['layer']
-				filters = model.layers[layer_pos].output.shape[-1]
+		tf.summary.scalar(name='model_acc', data=final[1], step=0)
+		tf.summary.scalar(name='model_loss', data=final[0], step=0)
 
-
-
-				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
-				new_model.layers[layer_pos].set_weights(target['weights'][0])
-				new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
-
-				new_model.save('cifar10_resnet_modified.h5')
-				tf.keras.backend.clear_session()
-				model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-
-			tf.keras.backend.clear_session()
-
-			test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-			test_dataset = test_dataset.batch(global_batch_size).repeat()
-			test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
-			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-			model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
-			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
-
-			tf.summary.scalar(name='model_acc', data=final[1], step=0)
-			tf.summary.scalar(name='model_loss', data=final[0], step=0)
-
-			writer.flush()
+		writer.flush()
