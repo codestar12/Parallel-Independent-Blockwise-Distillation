@@ -22,10 +22,6 @@ assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
 for i in range(len(physical_devices)):
         tf.config.experimental.set_memory_growth(physical_devices[i], True)
 import tensorflow_datasets as tfds
-if ARCH == 'resnet':
-	from utils_resnet import *
-elif ARCH == 'vgg':
-	from utils import *
 import numpy as np
 import math
 import time
@@ -197,6 +193,10 @@ if __name__ == '__main__':
 	MODEL_PATH = args.model_path
 
 
+	if ARCH == 'resnet':
+		from utils_resnet import *
+	elif ARCH == 'vgg':
+		from utils import *
 # 	with open('targets.json', 'r') as f:
 # 		targets = json.load(f)
 
