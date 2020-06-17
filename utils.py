@@ -118,7 +118,7 @@ class LayerBatch(tf.keras.utils.Sequence):
 		self.batch_size = batch_size
 
 	def __len__(self):
-		return math.ceil(self.data_size // self.batch_size)
+		return math.ceil(self.data_size / self.batch_size)
 
 	def __getitem__(self, index):
 		X, y = self.input_model(next(self.dataset))
