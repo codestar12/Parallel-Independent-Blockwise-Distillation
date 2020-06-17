@@ -1,0 +1,3 @@
+[submodule "CPU_GPU_Profiling"]
+	path = CPU_GPU_Profiling
+	url = git@github.com:PainYo170/CPU_GPU_Profiling.git
