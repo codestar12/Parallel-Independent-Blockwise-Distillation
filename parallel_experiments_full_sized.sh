@@ -1,5 +1,6 @@
 mpiexec -n=4 python compress_model_parallel.py \
 						-bs=16 \
+						-im=224
 						-sp=".summarys/vgg/cifar10_parallel_4_gpu/" \
 						-tp="./timing_info/vgg/four_gpu_cifar10_224.json" \
 						-ep=2 \
