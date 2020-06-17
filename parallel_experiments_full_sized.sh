@@ -1,0 +1,19 @@
+mpiexec -n=4 python compression_parallel.py \
+						-bs=16 \
+						-sp=".summarys/vgg/cifar10_parallel_4_gpu/" \
+						-tp="/timing_info/vgg/four_gpu_cifar10_224.json" \
+						-ep=30 \
+						-mp="./base_model_cifar10_vgg16.h5" \
+						-tm=100 \
+						-tf="targets.json"
+
+
+python vgg_compression_32.py \
+			-bs=16 \
+			-im=224 \
+			-sp=".summarys/vgg/cifar10_224/" \
+			-tp="/timing_info/vgg/cifar10_224.json" \
+			-ep=30 \
+			-mp="./base_model_cifar10_vgg16.h5" \
+			-tm=100 \
+			-tf="targets.json"
