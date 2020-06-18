@@ -30,7 +30,7 @@ temp = tf.zeros([4, 32, 32, 3])  # Or tf.zeros
 preprocess_input(temp)
 print("processed")
 
-IMAGE_SIZE = (64, 64)
+IMAGE_SIZE = (32, 32)
 TRAIN_SIZE = 50000
 VALIDATION_SIZE = 10000
 BATCH_SIZE_PER_GPU = 128
