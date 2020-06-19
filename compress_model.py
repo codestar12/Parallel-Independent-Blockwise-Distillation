@@ -12,6 +12,7 @@ SUMMARY_PATH = ""
 OG = None
 ARCH = 'resnet'
 MODEL_PATH = ""
+AUG = True 
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -40,12 +41,16 @@ def train_layer(target, rank=0):
 
 	layer_start = time.time()
 	dataset, info = tfds.load('cifar10', with_info=True)
-
-	train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	if AUG:
+		train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	else:
+		train = dataset['train'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+		train = train.cache(f'/tmp/cache{rank}')
 	train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.cache()
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
@@ -177,6 +182,7 @@ if __name__ == '__main__':
 						help="model architecture being compressed ex. vgg, resnet",
 						choices=['vgg', 'resnet'], default='resnet')
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
+	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
@@ -191,6 +197,7 @@ if __name__ == '__main__':
 	timing_path = args.timing_path
 	ARCH = args.arch
 	MODEL_PATH = args.model_path
+	AUG = args.augment_data
 
 
 	if ARCH == 'resnet':

@@ -12,6 +12,7 @@ SUMMARY_PATH = ""
 OG = None
 ARCH = 'resnet'
 MODEL_PATH = ""
+AUG = True
 TARGET_FILE = ""
 
 import os
@@ -47,12 +48,16 @@ def train_layer(target, rank=0):
 
 	layer_start = time.time()
 	dataset, info = tfds.load('cifar10', with_info=True)
-
-	train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	if AUG:
+		train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	else:
+		train = dataset['train'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+		train = train.cache(f'/tmp/cache{rank}')
 	train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.cache()
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
@@ -186,6 +191,7 @@ if __name__ == '__main__':
 						help="model architecture being compressed ex. vgg, resnet",
 						choices=['vgg', 'resnet'], default='resnet')
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
+	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 	parser.add_argument("-tf", "--target_file_path", type=str, help="path to target file", default='targets_resnet.json')
 
 	args = parser.parse_args()
@@ -199,11 +205,12 @@ if __name__ == '__main__':
 	TEST = args.test_multiplier
 	SUMMARY_PATH = args.summary_path
 	timing_path = args.timing_path
-	schedule = args.schedule
 	ARCH = args.arch
 	MODEL_PATH = args.model_path
-	TARGET_FILE = args.target_file_path
+	AUG = args.augment_data
 
+	schedule = args.schedule
+	TARGET_FILE = args.target_file_path
 
 	if ARCH == 'resnet':
 		from utils_resnet import *
