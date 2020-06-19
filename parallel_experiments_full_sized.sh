@@ -1,9 +1,9 @@
 mpiexec -n=4 python compress_model_parallel.py \
-						-bs=32 \
+						-bs=16 \
 						-im=224 \
-						-sp=".summarys/vgg/cifar10_parallel_4_gpu/" \
+						-sp=".summarys/vgg/cifar10_224_parallel_4_gpu/" \
 						-tp="./timing_info/vgg/four_gpu_cifar10_224.json" \
-						-ep=2 \
+						-ep=15\
 						-mp="./base_model_cifar10_vgg16.h5" \
 						-tm=1 \
 						-ar="vgg" \
@@ -12,11 +12,11 @@ mpiexec -n=4 python compress_model_parallel.py \
 
 
 python compress_model.py \
-			-bs=32 \
+			-bs=16 \
 			-im=224 \
 			-sp=".summarys/vgg/cifar10_224/" \
 			-tp="./timing_info/vgg/cifar10_224.json" \
-			-ep=2 \
+			-ep=16 \
 			-mp="./base_model_cifar10_vgg16.h5" \
 			-tm=1 \
 			-ar="vgg"
