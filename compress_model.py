@@ -44,15 +44,17 @@ def train_layer(target, rank=0):
 	options = tf.data.Options()
 	options.experimental_threading.max_intra_op_parallelism = 1
 	dataset = dataset.with_options(options)
+	train = dataset['train'].with_options(options)
+	test = dataset['test'].with_options(options)
 	if AUG:
-		train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+		train = train.map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
 	else:
-		train = dataset['train'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+		train = train.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
 		train = train.cache()
 	train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=2)
 
-	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+	test_dataset = test.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
 	#test_dataset = test_dataset.cache()
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=2)
