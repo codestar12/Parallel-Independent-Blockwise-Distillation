@@ -41,7 +41,8 @@ def train_layer(target, rank=0):
 
 	layer_start = time.time()
 	dataset, info = tfds.load('cifar10', with_info=True)
-	options = tf.data.experimental_threading.max_intra_op_parallelism = 1
+	options = tf.data.Options()
+	options.experimental_threading.max_intra_op_parallelism = 1
 	dataset = dataset.with_options(options)
 	if AUG:
 		train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
