@@ -49,17 +49,17 @@ def train_layer(target, rank=0):
 	layer_start = time.time()
 	dataset, info = tfds.load('cifar10', with_info=True)
 	if AUG:
-		train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+		train = dataset['train'].map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
 	else:
-		train = dataset['train'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+		train = dataset['train'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
 		train = train.cache()
 	train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
-	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+	train_dataset = train_dataset.prefetch(buffer_size=2)
 
-	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	test_dataset = test_dataset.cache()
+	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+	#test_dataset = test_dataset.cache()
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
-	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+	test_dataset = test_dataset.prefetch(buffer_size=2)
 
 	writer = tf.summary.create_file_writer(SUMMARY_PATH + f"{target['name']}")
 	with writer.as_default():
