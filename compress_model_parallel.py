@@ -98,7 +98,7 @@ def train_layer(target, rank=0):
 		optimizer=tf.keras.optimizers.RMSprop(lr_schedule)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
 
-
+		target['score'] = (0, 0)
 		replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
 		print('epochs started')
@@ -133,7 +133,7 @@ def train_layer(target, rank=0):
 			if epoch % 2 == 0:
 				replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
-				target['weights'] = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
+				weights = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
 
 				tf.keras.backend.clear_session()
 
@@ -143,15 +143,19 @@ def train_layer(target, rank=0):
 				filters = model.layers[layer_pos].output.shape[-1]
 
 				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
-				new_model.layers[layer_pos].set_weights(target['weights'][0])
-				new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
+				new_model.layers[layer_pos].set_weights(weights[0])
+				new_model.layers[layer_pos + 2].set_weights(weights[1])
 				new_model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
-				target['score'] = new_model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
+				score = new_model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
-				tf.summary.scalar(name='model_acc', data=target['score'][1], step=epoch)
-				tf.summary.scalar(name='model_loss', data=target['score'][0], step=epoch)
+				if score[1] > target['score'][1]:
+					target['score'] = score
+					target['weights'] = weights
 
-				print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {target['score'][1]}")
+				tf.summary.scalar(name='model_acc', data=score[1], step=epoch)
+				tf.summary.scalar(name='model_loss', data=score[0], step=epoch)
+
+				print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {score[1]}")
 
 				if EARLY_STOPPING:
 					if OG[1] - target['score'][1] < 0.002:
@@ -271,11 +275,6 @@ if __name__ == '__main__':
 
 		list.sort(targets, key=lambda target: target['layer'])
 
-		if timing_path is not None:
-			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
-			timing_dump.append({'total_time': total_time})
-			with open(timing_path, 'w') as f:
-				json.dump(timing_dump, f, indent='\t')
 
 		tf.keras.backend.clear_session()
 		model = tf.keras.models.load_model(MODEL_PATH)
@@ -284,19 +283,22 @@ if __name__ == '__main__':
 		writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
 		with writer.as_default():
 			for target in targets[::-1]:
-				print(f'replacing layer {target["name"]}')
 
-				layer_name = target['name']
-				layer_pos = target['layer']
-				filters = model.layers[layer_pos].output.shape[-1]
+				if OG[1] - target['score'][1] < 0.02:
+					print(f'replacing layer {target["name"]}')
+
+					layer_name = target['name']
+					layer_pos = target['layer']
+					filters = model.layers[layer_pos].output.shape[-1]
 
 
 
-				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
-				new_model.layers[layer_pos].set_weights(target['weights'][0])
-				new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
+					new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
+					new_model.layers[layer_pos].set_weights(target['weights'][0])
+					new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
 
-				new_model.save('cifar10_resnet_modified.h5')
+					new_model.save('cifar10_resnet_modified.h5')
+
 				tf.keras.backend.clear_session()
 				model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
 
@@ -305,12 +307,41 @@ if __name__ == '__main__':
 			test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 			test_dataset = test_dataset.batch(global_batch_size).repeat()
 			test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+			train = dataset['train']
+			if AUG:
+				train = train.map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+			else:
+				train = train.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+				train = train.cache()
+			train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
+			train_dataset = train_dataset.prefetch(buffer_size=2)
 
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-			model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
+			model.compile(optimizer=tf.keras.optimizers.SGD(.0001), loss="categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
+			fine_tune = replacement_layers.fit(
+								x=train_dataset,
+								epochs=3,
+								steps_per_epoch=math.ceil(TRAIN_SIZE / global_batch_size / TEST),
+								validation_data=test_dataset,
+								shuffle=False,
+								validation_steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST),
+								verbose=2)
 
+			new_model.save('cifar10_resnet_modified_fine_tune.h5')
 			tf.summary.scalar(name='model_acc', data=final[1], step=0)
 			tf.summary.scalar(name='model_loss', data=final[0], step=0)
+
+			tf.summary.scalar(name='model_acc_fine_tune', data=fine_tune[1], step=0)
+			tf.summary.scalar(name='model_loss_fine_tune', data=fine_tune[0], step=0)
+
+			if timing_path is not None:
+				timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
+				timing_dump.append({'total_time': total_time})
+				timing_dump.append({'final_acc': final[1]})
+				timing_dump.append({'fine_tune_acc': fine_tune[1]})
+				with open(timing_path, 'w') as f:
+					json.dump(timing_dump, f, indent='\t')
+
 
 			writer.flush()
