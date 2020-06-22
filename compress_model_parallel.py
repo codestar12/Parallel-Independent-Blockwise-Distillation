@@ -319,7 +319,7 @@ if __name__ == '__main__':
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
 			model.compile(optimizer=tf.keras.optimizers.SGD(.0001), loss="categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
-			fine_tune = replacement_layers.fit(
+			fine_tune = model.fit(
 								x=train_dataset,
 								epochs=3,
 								steps_per_epoch=math.ceil(TRAIN_SIZE / global_batch_size / TEST),
