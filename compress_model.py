@@ -304,25 +304,27 @@ if __name__ == '__main__':
 		final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 		fine_tune = model.fit(
 							x=train_dataset,
-							epochs=3,
+							epochs=15,
 							steps_per_epoch=math.ceil(TRAIN_SIZE / global_batch_size / TEST),
 							validation_data=test_dataset,
 							shuffle=False,
 							validation_steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST),
 							verbose=2)
+		
+		final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
 		new_model.save('cifar10_resnet_modified_fine_tune.h5')
 		tf.summary.scalar(name='model_acc', data=final[1], step=0)
 		tf.summary.scalar(name='model_loss', data=final[0], step=0)
 
-		tf.summary.scalar(name='model_acc_fine_tune', data=fine_tune[1], step=0)
-		tf.summary.scalar(name='model_loss_fine_tune', data=fine_tune[0], step=0)
+		tf.summary.scalar(name='model_acc_fine_tune', data=final_fine_tune[1], step=0)
+		tf.summary.scalar(name='model_loss_fine_tune', data=final_fine_tune[0], step=0)
 
 		if timing_path is not None:
 			timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
 			timing_dump.append({'total_time': total_time})
 			timing_dump.append({'final_acc': final[1]})
-			timing_dump.append({'fine_tune_acc': fine_tune[1]})
+			timing_dump.append({'fine_tune_acc': final_fine_tune[1]})
 			with open(timing_path, 'w') as f:
 				json.dump(timing_dump, f, indent='\t')
 		
