@@ -301,7 +301,7 @@ if __name__ == '__main__':
 
 		fine_tune_epochs = 30
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-					.005,
+					.01,
 					decay_steps= math.ceil(TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
 					decay_rate=0.96,
 					staircase=False)
@@ -311,7 +311,7 @@ if __name__ == '__main__':
 		final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 		fine_tune = model.fit(
 							x=train_dataset,
-							epochs=20,
+							epochs=fine_tune_epochs,
 							steps_per_epoch=math.ceil(TRAIN_SIZE / global_batch_size / TEST),
 							validation_data=test_dataset,
 							shuffle=False,
