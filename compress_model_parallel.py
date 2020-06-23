@@ -317,11 +317,11 @@ if __name__ == '__main__':
 			train_dataset = train_dataset.prefetch(buffer_size=2)
 
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-			model.compile(optimizer=tf.keras.optimizers.SGD(.0001), loss="categorical_crossentropy", metrics=['accuracy'])
+			model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=.001, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 			fine_tune = model.fit(
 								x=train_dataset,
-								epochs=15,
+								epochs=20,
 								steps_per_epoch=math.ceil(TRAIN_SIZE / global_batch_size / TEST),
 								validation_data=test_dataset,
 								shuffle=False,
