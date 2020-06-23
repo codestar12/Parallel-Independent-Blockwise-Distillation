@@ -323,6 +323,10 @@ if __name__ == '__main__':
 						decay_rate=0.96,
 						staircase=False)
 
+			from tensorflow.keras.callbacks import ModelCheckpoint
+			
+			checkpoint = ModelCheckpoint('cifar10_resnet_modified_fine_tune.h5', monitor='val_accuracy', verbose=1, save_best_only=True)
+
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
 			model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
@@ -333,7 +337,8 @@ if __name__ == '__main__':
 								validation_data=test_dataset,
 								shuffle=False,
 								validation_steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST),
-								verbose=2)
+								verbose=1,
+								callbacks=[checkpoint])
 
 			final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
