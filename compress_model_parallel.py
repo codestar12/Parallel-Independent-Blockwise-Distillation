@@ -316,8 +316,15 @@ if __name__ == '__main__':
 			train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 			train_dataset = train_dataset.prefetch(buffer_size=2)
 
+			fine_tune_epochs = 30
+			lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+						.005,
+						decay_steps= math.ceil(TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
+						decay_rate=0.96,
+						staircase=False)
+
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-			model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=.001, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
+			model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 			fine_tune = model.fit(
 								x=train_dataset,
