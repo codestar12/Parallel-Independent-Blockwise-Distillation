@@ -299,7 +299,7 @@ if __name__ == '__main__':
 		train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 		train_dataset = train_dataset.prefetch(buffer_size=2)
 
-		fine_tune_epochs = 30
+		fine_tune_epochs = 40
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 					.01,
 					decay_steps= math.ceil(TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
@@ -322,7 +322,8 @@ if __name__ == '__main__':
 							validation_steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST),
 							verbose=1,
 							callbacks=[checkpoint])
-		
+
+		model = tf.keras.models.load_model('cifar10_resnet_modified_fine_tune.h5')	
 		final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
 		new_model.save('cifar10_resnet_modified_fine_tune.h5')
