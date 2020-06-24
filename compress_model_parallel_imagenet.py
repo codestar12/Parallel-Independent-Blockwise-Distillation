@@ -190,7 +190,7 @@ if __name__ == '__main__':
 						help="dataset validation split size", default=10000)
 	parser.add_argument("-bs", "--batch_size", type=int,
 						help="batch size", default=256)
-	parser.add_argument("-nc", "--num_classes", type=int, default=10)
+	parser.add_argument("-nc", "--num_classes", type=int, default=1000)
 	parser.add_argument("-ep", "--epochs", type=int, default=40)
 	parser.add_argument("-es", "--early_stopping", type=bool, default=False)
 	parser.add_argument("-tm", "--test_multiplier", type=int, default=1,
