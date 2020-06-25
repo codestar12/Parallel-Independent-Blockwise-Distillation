@@ -91,7 +91,7 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		starting_lr = 5e-2
+		starting_lr = 5e-3
 		initial_learning_rate = 0.1
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 			starting_lr,
