@@ -283,7 +283,7 @@ if __name__ == '__main__':
 		tf.keras.backend.clear_session()
 		model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
 		model.save("imagenet_resnet_original.h5")
-
+		model.save("imagenet_resnet_modified.h5")
 		writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
 		with writer.as_default():
 			for target in targets[::-1]:
@@ -300,8 +300,7 @@ if __name__ == '__main__':
 					new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
 					new_model.layers[layer_pos].set_weights(target['weights'][0])
 					new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
-
-				new_model.save('imagenet_resnet_modified.h5')
+					new_model.save('imagenet_resnet_modified.h5')
 
 				tf.keras.backend.clear_session()
 				model = tf.keras.models.load_model('imagenet_resnet_modified.h5')
