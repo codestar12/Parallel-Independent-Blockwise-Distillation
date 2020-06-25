@@ -91,13 +91,13 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		starting_lr = 2e-2
+		starting_lr = 5e-2
 		initial_learning_rate = 0.1
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 			starting_lr,
 			decay_steps=3000,
 			decay_rate=0.96,
-			staircase=True)
+			staircase=False)
 
 		optimizer=tf.keras.optimizers.RMSprop(lr_schedule)
 		replacement_layers.compile(loss=MSE, optimizer=optimizer)
