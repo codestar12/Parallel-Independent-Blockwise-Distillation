@@ -205,6 +205,7 @@ if __name__ == '__main__':
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 	parser.add_argument("-tf", "--target_file_path", type=str, help="path to target file", default='targets_resnet.json')
+	parser.add_argument("-fr", "--freeze_layers", type=bool, default=False, help="whether to freeze unreplaced layers")
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
@@ -220,6 +221,7 @@ if __name__ == '__main__':
 	ARCH = args.arch
 	MODEL_PATH = args.model_path
 	AUG = args.augment_data
+	freeze = args.freeze_layers
 
 	schedule = args.schedule
 	TARGET_FILE = args.target_file_path
@@ -240,6 +242,11 @@ if __name__ == '__main__':
 
 
 	model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+
+	if freeze:
+		for layer in model.layers:
+			layer.trainable = False
+
 	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 	OG = model.evaluate(test_dataset, steps=math.ceil(IMAGENET_EVAL_SIZE/global_batch_size/TEST))
 	del model
@@ -321,7 +328,7 @@ if __name__ == '__main__':
 
 			fine_tune_epochs = 2
 			lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-						.01,
+						.0001,
 						decay_steps= math.ceil(IMAGENET_TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
 						decay_rate=0.96,
 						staircase=False)
