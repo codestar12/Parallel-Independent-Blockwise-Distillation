@@ -288,7 +288,7 @@ if __name__ == '__main__':
 		with writer.as_default():
 			for target in targets[::-1]:
 
-				if OG[1] - target['score'][1] < 0.02:
+				if OG[1] - target['score'][1] < 0.05:
 					print(f'replacing layer {target["name"]}')
 
 					layer_name = target['name']
@@ -307,7 +307,7 @@ if __name__ == '__main__':
 
 			tf.keras.backend.clear_session()
 
-			test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+			test_dataset = dataset['validation'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 			test_dataset = test_dataset.batch(global_batch_size).repeat()
 			test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 			train = dataset['train']
