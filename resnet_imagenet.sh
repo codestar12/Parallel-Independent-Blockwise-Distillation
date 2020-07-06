@@ -1,17 +1,41 @@
 mpiexec -n=4 python compress_model_parallel_imagenet.py \
 						-bs=32 \
-						-im=224 \
-						-sp=".summarys/resnet/imagenet_parallel_4_gpu_fine_tune/" \
-						-tp="resnet_four_gpu_imagenet_fine_tune.json" \
-						-ep=30
+						-im=224 \ 
+						--arch="vgg"
+						-sp=".summarys/vgg/imagenet_parallel_4_gpu_fine_tune_10/" \
+						-tp="vgg_four_gpu_imagenet_fine_tune_10.json" \
+						-tf="targets" \
+						-ep=2 \
+						-tm=100
 
-mpiexec -n=4 python compress_model_parallel_imagenet.py \
-						-bs=32 \
-						-im=224 \
-						-sp=".summarys/resnet/imagenet_parallel_4_gpu_fine_tune_freeze/" \
-						-tp="resnet_four_gpu_imagenet_fine_tune_freeze.json" \
-						-ep=30 \
-						-fr=True
+# mpiexec -n=3 python compress_model_parallel_imagenet.py \
+# 						-bs=32 \
+# 						-im=224 \
+# 						-sp=".summarys/resnet/imagenet_parallel_3_gpu_fine_tune_10/" \
+# 						-tp="resnet_three_gpu_imagenet_fine_tune_10.json" \
+# 						-ep=24
+
+# mpiexec -n=2 python compress_model_parallel_imagenet.py \
+# 						-bs=32 \
+# 						-im=224 \
+# 						-sp=".summarys/resnet/imagenet_parallel_2_gpu_fine_tune_10/" \
+# 						-tp="resnet_two_gpu_imagenet_fine_tune_10.json" \
+# 						-ep=24
+
+# mpiexec -n=1 python compress_model_parallel_imagenet.py \
+# 						-bs=32 \
+# 						-im=224 \
+# 						-sp=".summarys/resnet/imagenet_parallel_1_gpu_fine_tune_10/" \
+# 						-tp="resnet_one_gpu_imagenet_fine_tune_10.json" \
+# 						-ep=24
+
+#mpiexec -n=4 python compress_model_parallel_imagenet.py \
+#						-bs=32 \
+#						-im=224 \
+#						-sp=".summarys/resnet/imagenet_parallel_4_gpu_fine_tune_freeze_15/" \
+#						-tp="resnet_four_gpu_imagenet_fine_tune_freeze_15.json" \
+#						-ep=30 \
+#						-fr=True
 
  #mpiexec -n=3 python compress_model_parallel_imagenet.py \
  #						-bs=32 \

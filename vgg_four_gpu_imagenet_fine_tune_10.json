@@ -1,0 +1,105 @@
+[
+	{
+		"name": "block1_conv1",
+		"layer": 1,
+		"run_time": 22779.92245221138,
+		"rank": 0,
+		"score": 0.6658999919891357
+	},
+	{
+		"name": "block1_conv2",
+		"layer": 2,
+		"run_time": 38208.51271152496,
+		"rank": 1,
+		"score": 0.6680999994277954
+	},
+	{
+		"name": "block2_conv1",
+		"layer": 4,
+		"run_time": 15693.61689710617,
+		"rank": 2,
+		"score": 0.6687999963760376
+	},
+	{
+		"name": "block2_conv2",
+		"layer": 5,
+		"run_time": 19343.264709949493,
+		"rank": 3,
+		"score": 0.6671000123023987
+	},
+	{
+		"name": "block3_conv1",
+		"layer": 7,
+		"run_time": 8356.621006965637,
+		"rank": 0,
+		"score": 0.6656000018119812
+	},
+	{
+		"name": "block3_conv2",
+		"layer": 8,
+		"run_time": 8990.064413070679,
+		"rank": 1,
+		"score": 0.6650999784469604
+	},
+	{
+		"name": "block3_conv3",
+		"layer": 9,
+		"run_time": 11215.356263637543,
+		"rank": 2,
+		"score": 0.6636999845504761
+	},
+	{
+		"name": "block4_conv1",
+		"layer": 11,
+		"run_time": 5377.587603330612,
+		"rank": 3,
+		"score": 0.6575999855995178
+	},
+	{
+		"name": "block4_conv2",
+		"layer": 12,
+		"run_time": 5777.6847405433655,
+		"rank": 0,
+		"score": 0.6608999967575073
+	},
+	{
+		"name": "block4_conv3",
+		"layer": 13,
+		"run_time": 5538.568470716476,
+		"rank": 1,
+		"score": 0.6491000056266785
+	},
+	{
+		"name": "block5_conv1",
+		"layer": 15,
+		"run_time": 4490.9540503025055,
+		"rank": 2,
+		"score": 0.6510000228881836
+	},
+	{
+		"name": "block5_conv2",
+		"layer": 16,
+		"run_time": 4643.695502758026,
+		"rank": 3,
+		"score": 0.64410001039505
+	},
+	{
+		"name": "block5_conv3",
+		"layer": 17,
+		"run_time": 4462.255036115646,
+		"rank": 0,
+		"score": 0.5770000219345093
+	},
+	{
+		"total_time": 52736.232224941254
+	},
+	{
+		"final_acc": 0.2953000068664551
+	},
+	{
+		"fine_tune_acc": 0.6505200266838074
+	},
+	{
+		"threadhold": 0.507039999961853
+	}
+]

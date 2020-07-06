@@ -1,0 +1,89 @@
+[
+	{
+		"name": "block1_conv1",
+		"layer": 1,
+		"run_time": 510.13875699043274,
+		"rank": 3
+	},
+	{
+		"name": "block1_conv2",
+		"layer": 2,
+		"run_time": 869.0569372177124,
+		"rank": 2
+	},
+	{
+		"name": "block2_conv1",
+		"layer": 4,
+		"run_time": 382.6448359489441,
+		"rank": 1
+	},
+	{
+		"name": "block2_conv2",
+		"layer": 5,
+		"run_time": 521.935703754425,
+		"rank": 0
+	},
+	{
+		"name": "block3_conv1",
+		"layer": 7,
+		"run_time": 268.66664028167725,
+		"rank": 0
+	},
+	{
+		"name": "block3_conv2",
+		"layer": 8,
+		"run_time": 289.6427676677704,
+		"rank": 3
+	},
+	{
+		"name": "block3_conv3",
+		"layer": 9,
+		"run_time": 291.64319610595703,
+		"rank": 1
+	},
+	{
+		"name": "block4_conv1",
+		"layer": 11,
+		"run_time": 245.2151870727539,
+		"rank": 3
+	},
+	{
+		"name": "block4_conv2",
+		"layer": 12,
+		"run_time": 252.29911184310913,
+		"rank": 0
+	},
+	{
+		"name": "block4_conv3",
+		"layer": 13,
+		"run_time": 262.2500035762787,
+		"rank": 1
+	},
+	{
+		"name": "block5_conv1",
+		"layer": 15,
+		"run_time": 249.15428352355957,
+		"rank": 0
+	},
+	{
+		"name": "block5_conv2",
+		"layer": 16,
+		"run_time": 242.58136796951294,
+		"rank": 1
+	},
+	{
+		"name": "block5_conv3",
+		"layer": 17,
+		"run_time": 239.53840804100037,
+		"rank": 2
+	},
+	{
+		"total_time": 1292.064349412918
+	},
+	{
+		"final_acc": 0.7813000082969666
+	},
+	{
+		"fine_tune_acc": 0.8659999966621399
+	}
+]

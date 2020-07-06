@@ -2,106 +2,106 @@
 	{
 		"name": "conv2_block1_2_conv",
 		"layer": 10,
-		"run_time": 839.6188445091248,
+		"run_time": 331.8071255683899,
 		"rank": 0
 	},
 	{
 		"name": "conv2_block2_2_conv",
 		"layer": 22,
-		"run_time": 844.7104461193085,
+		"run_time": 335.02750873565674,
 		"rank": 1
 	},
 	{
 		"name": "conv2_block3_2_conv",
 		"layer": 32,
-		"run_time": 868.980747461319,
+		"run_time": 348.3853688240051,
 		"rank": 2
 	},
 	{
 		"name": "conv3_block1_2_conv",
 		"layer": 42,
-		"run_time": 854.6088960170746,
+		"run_time": 331.39151215553284,
 		"rank": 3
 	},
 	{
 		"name": "conv3_block2_2_conv",
 		"layer": 54,
-		"run_time": 891.8999309539795,
+		"run_time": 351.21326899528503,
 		"rank": 0
 	},
 	{
 		"name": "conv3_block3_2_conv",
 		"layer": 64,
-		"run_time": 897.897735118866,
+		"run_time": 361.0879063606262,
 		"rank": 1
 	},
 	{
 		"name": "conv3_block4_2_conv",
 		"layer": 74,
-		"run_time": 897.867901802063,
+		"run_time": 368.84093618392944,
 		"rank": 2
 	},
 	{
 		"name": "conv4_block1_2_conv",
 		"layer": 84,
-		"run_time": 903.6063182353973,
+		"run_time": 355.406240940094,
 		"rank": 3
 	},
 	{
 		"name": "conv4_block2_2_conv",
 		"layer": 96,
-		"run_time": 908.862202167511,
+		"run_time": 374.0162205696106,
 		"rank": 0
 	},
 	{
 		"name": "conv4_block3_2_conv",
 		"layer": 106,
-		"run_time": 921.6591441631317,
+		"run_time": 372.34691524505615,
 		"rank": 1
 	},
 	{
 		"name": "conv4_block4_2_conv",
 		"layer": 116,
-		"run_time": 932.8034536838531,
+		"run_time": 378.6391923427582,
 		"rank": 2
 	},
 	{
 		"name": "conv4_block5_2_conv",
 		"layer": 126,
-		"run_time": 936.6490631103516,
+		"run_time": 380.3016610145569,
 		"rank": 3
 	},
 	{
 		"name": "conv4_block6_2_conv",
 		"layer": 136,
-		"run_time": 941.2317314147949,
+		"run_time": 390.6739909648895,
 		"rank": 0
 	},
 	{
 		"name": "conv5_block1_2_conv",
 		"layer": 146,
-		"run_time": 950.0708997249603,
+		"run_time": 392.7242786884308,
 		"rank": 1
 	},
 	{
 		"name": "conv5_block2_2_conv",
 		"layer": 158,
-		"run_time": 978.5523374080658,
+		"run_time": 394.09349822998047,
 		"rank": 2
 	},
 	{
 		"name": "conv5_block3_2_conv",
 		"layer": 168,
-		"run_time": 996.4785077571869,
+		"run_time": 404.6641788482666,
 		"rank": 3
 	},
 	{
-		"total_time": 3691.4645314216614
+		"total_time": 1490.218103170395
 	},
 	{
-		"final_acc": 0.8102999925613403
+		"final_acc": 0.7940999865531921
 	},
 	{
-		"fine_tune_acc": 0.8902999758720398
+		"fine_tune_acc": 0.883400022983551
 	}
 ]

@@ -1,0 +1,79 @@
+#!/bin/bash
+
+#Four gpu measurement 
+echo date
+echo start 4 gpu measuring 
+./CPU_GPU_Profiling/cpu/cpuLogToFile $1 "GPU_4" $2 &  
+python ./CPU_GPU_Profiling/gpu/gpuProfiling.py $1 "GPU_4" $2 &
+
+mpiexec -n=4 python compress_model_parallel.py \
+                        -bs=256 \
+                        -im=64 \
+                        -sp=".summarys/resnet/cifar10_4_epochs/" \
+                        -tp="resnet_four_gpu_epochs.json" \
+                        -ep=2 \
+			-tm=10
+
+sudo pkill cpuLogToFile
+sudo pkill -f ./CPU_GPU_Profiling/gpu/gpuProfiling.py
+echo end 4 gpu measuring 
+echo date 
+
+#Three gpu measurement 
+echo date
+echo start 3 gpu measuring 
+./CPU_GPU_Profiling/cpu/cpuLogToFile $1 "GPU_3" $2 &  
+python ./CPU_GPU_Profiling/gpu/gpuProfiling.py $1 "GPU_3" $2 &
+
+mpiexec -n=3 python compress_model_parallel.py \
+                        -bs=256 \
+                        -im=64 \
+                        -sp=".summarys/resnet/cifar10_parallel_3_gpu_fixed_calls/" \
+                        -tp="resnet_three_gpu_cifar10_fixed_calls.json" \
+                        -ep=2 \
+			-tm=10
+
+sudo pkill cpuLogToFile
+sudo pkill -f ./gpu/gpuProfiling.py
+echo end 3 gpu measuring 
+echo date 
+
+#Two gpu measurement 
+echo date
+echo start 2 gpu measuring 
+./CPU_GPU_Profiling/cpu/cpuLogToFile $1 "GPU_2" $2 &  
+python ./CPU_GPU_Profiling/gpu/gpuProfiling.py $1 "GPU_2" $2 &
+
+mpiexec -n=2 python compress_model_parallel.py \
+                        -bs=256 \
+                        -im=64 \
+                        -sp=".summarys/resnet/cifar10_parallel_2_gpu_fixed_calls/" \
+                        -tp="resnet_two_gpu_cifar10_fixed_calls.json" \
+                        -ep=2 \
+			-tm=10
+
+sudo pkill cpuLogToFile
+sudo pkill -f ./gpu/gpuProfiling.py
+echo end 2 gpu measuring 
+echo date 
+
+#One gpu measurement 
+echo date
+echo start 1 gpu measuring 
+./CPU_GPU_Profiling/cpu/cpuLogToFile $1 "GPU_1" $2 &  
+python ./CPU_GPU_Profiling/gpu/gpuProfiling.py $1 "GPU_1" $2 &
+
+mpiexec -n=1 python compress_model_parallel.py \
+                        -bs=256 \
+                        -im=64 \
+                        -sp=".summarys/resnet/cifar10_parallel_1_gpu_fixed_calls/" \
+                        -tp="resnet_one_gpu_cifar10_fixed_calls.json" \
+                        -ep=2 \
+			-tm=10
+
+sudo pkill cpuLogToFile
+sudo pkill -f ./CPU_GPU_Profiling/gpu/gpuProfiling.py
+echo end 1 gpu measuring 
+echo date 
+
+#The measurement will end when $2 time out or user program returns or terminated by the keyboard 'Ctrl + C' 

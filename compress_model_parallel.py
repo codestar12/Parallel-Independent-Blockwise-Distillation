@@ -87,7 +87,7 @@ def train_layer(target, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		starting_lr = 2e-2
+		starting_lr = 2e-3
 		initial_learning_rate = 0.1
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 			starting_lr,
@@ -201,6 +201,7 @@ if __name__ == '__main__':
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 	parser.add_argument("-tf", "--target_file_path", type=str, help="path to target file", default='targets_resnet.json')
+	parser.add_argument("-fr", "--freeze_layers", type=bool, default=False, help="whether to freeze unreplaced layers")
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
@@ -216,6 +217,7 @@ if __name__ == '__main__':
 	ARCH = args.arch
 	MODEL_PATH = args.model_path
 	AUG = args.augment_data
+	freeze = args.freeze_layers
 
 	schedule = args.schedule
 	TARGET_FILE = args.target_file_path
@@ -236,15 +238,22 @@ if __name__ == '__main__':
 
 
 	model = tf.keras.models.load_model(MODEL_PATH)
+
+	if freeze:
+		for layer in model.layers:
+			layer.trainable = False
+
 	model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 	OG = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE/global_batch_size/TEST))
 	del model
 	tf.keras.backend.clear_session()
 
+	print(schedule)
 	my_layers = []
 	# either load a schedule from json for each GPU or
 	# assign one based on cyclic assignment
 	if schedule is not None:
+		print("load schedule")
 		with open(schedule, 'r') as f:
 			schedules = json.load(f)
 		my_layers = schedules[str(rank)]
@@ -252,15 +261,16 @@ if __name__ == '__main__':
 		my_layers = [targets[i]['layer'] for i in range(rank, len(targets), size)]
 
 
+	print(my_layers)
+
 	if rank == 0:
 		tik = time.time()
 
 
 	print(f"OG IS : {OG}\n")
 	print(my_layers)
-	with tf.device(f'/GPU:{rank}'):
-		print(f'here from {rank}')
-		targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
+
+	targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
 
 
 	targets = comm.gather(targets, root=0)
@@ -282,9 +292,10 @@ if __name__ == '__main__':
 
 		writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
 		with writer.as_default():
+			model.save('cifar10_resnet_modified.h5')
 			for target in targets[::-1]:
 
-				if OG[1] - target['score'][1] < 0.02:
+				if OG[1] - target['score'][1] < 0.15:
 					print(f'replacing layer {target["name"]}')
 
 					layer_name = target['name']
@@ -316,15 +327,15 @@ if __name__ == '__main__':
 			train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 			train_dataset = train_dataset.prefetch(buffer_size=2)
 
-			fine_tune_epochs = 40
+			fine_tune_epochs = 60
 			lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-						.01,
+						.003,
 						decay_steps= math.ceil(TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
 						decay_rate=0.96,
 						staircase=False)
 
 			from tensorflow.keras.callbacks import ModelCheckpoint
-			
+
 			checkpoint = ModelCheckpoint('cifar10_resnet_modified_fine_tune.h5', monitor='val_accuracy', verbose=1, save_best_only=True)
 
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
@@ -340,10 +351,10 @@ if __name__ == '__main__':
 								verbose=1,
 								callbacks=[checkpoint])
 
-			model = tf.keras.models.load_model('cifar10_resnet_modified_fine_tune.h5')	
+			model = tf.keras.models.load_model('cifar10_resnet_modified_fine_tune.h5')
 			final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
-			new_model.save('cifar10_resnet_modified_fine_tune.h5')
+			#new_model.save('cifar10_resnet_modified_fine_tune.h5')
 			tf.summary.scalar(name='model_acc', data=final[1], step=0)
 			tf.summary.scalar(name='model_loss', data=final[0], step=0)
 

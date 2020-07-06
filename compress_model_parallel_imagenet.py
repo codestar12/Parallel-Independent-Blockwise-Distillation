@@ -74,7 +74,10 @@ def train_layer(target, rank=0):
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
 		print("cleared backend")
-		model = tf.keras.models.load_model(MODEL_PATH)
+		if ARCH == 'resnet':
+			model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+		else:
+			model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 		print("model loaded")
 		in_layer = target['layer']
 		get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
@@ -110,7 +113,10 @@ def train_layer(target, rank=0):
 
 			if epoch % 2 == 0:
 				tf.keras.backend.clear_session()
-				model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+				if ARCH == 'resnet':
+					model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+				else:
+					model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 				in_layer = target['layer']
 				get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
 																		model.layers[in_layer].output])
@@ -141,7 +147,10 @@ def train_layer(target, rank=0):
 
 				tf.keras.backend.clear_session()
 
-				model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+				if ARCH == 'resnet':
+					model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+				else:
+					model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 				layer_name = target['name']
 				layer_pos = target['layer']
 				filters = model.layers[layer_pos].output.shape[-1]
@@ -184,7 +193,7 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-im", "--image_size", type=int,
-						help="dataset image size", default=32)
+						help="dataset image size", default=224)
 	parser.add_argument("-ts", "--train_size", type=int,
 						help="dataset training split size", default=50000)
 	parser.add_argument("-vs", "--val_size", type=int,
@@ -240,9 +249,10 @@ if __name__ == '__main__':
 	test_dataset = test_dataset.batch(global_batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-
-	model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
-
+	if ARCH == 'resnet':
+		model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+	else:
+		model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 	if freeze:
 		for layer in model.layers:
 			layer.trainable = False
@@ -269,9 +279,8 @@ if __name__ == '__main__':
 
 	print(f"OG IS : {OG}\n")
 	print(my_layers)
-	with tf.device(f'/GPU:{rank}'):
-		print(f'here from {rank}')
-		targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
+
+	targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
 
 
 	targets = comm.gather(targets, root=0)
@@ -288,14 +297,17 @@ if __name__ == '__main__':
 
 
 		tf.keras.backend.clear_session()
-		model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+		if ARCH == 'resnet':
+			model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+		else:
+			model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 		model.save("imagenet_resnet_original.h5")
 		model.save("imagenet_resnet_modified.h5")
 		writer = tf.summary.create_file_writer(SUMMARY_PATH +  "final_model")
 		with writer.as_default():
 			for target in targets[::-1]:
 
-				if OG[1] - target['score'][1] < 0.05:
+				if OG[1] - target['score'][1] < 0.10:
 					print(f'replacing layer {target["name"]}')
 
 					layer_name = target['name']
@@ -326,7 +338,7 @@ if __name__ == '__main__':
 			train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
 			train_dataset = train_dataset.prefetch(buffer_size=2)
 
-			fine_tune_epochs = 2
+			fine_tune_epochs = 1
 			lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 						.0001,
 						decay_steps= math.ceil(IMAGENET_TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
@@ -334,7 +346,7 @@ if __name__ == '__main__':
 						staircase=False)
 
 			from tensorflow.keras.callbacks import ModelCheckpoint
-			
+
 			checkpoint = ModelCheckpoint('imagenet_resnet_modified_fine_tune.h5', monitor='val_accuracy', verbose=1, save_best_only=True)
 
 			model = tf.keras.models.load_model('imagenet_resnet_modified.h5')
@@ -350,7 +362,7 @@ if __name__ == '__main__':
 								verbose=1,
 								callbacks=[checkpoint])
 
-			model = tf.keras.models.load_model('imagenet_resnet_modified_fine_tune.h5')	
+			model = tf.keras.models.load_model('imagenet_resnet_modified_fine_tune.h5')
 			final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(IMAGENET_EVAL_SIZE / global_batch_size / TEST))
 
 			tf.summary.scalar(name='model_acc', data=final[1], step=0)
@@ -360,12 +372,13 @@ if __name__ == '__main__':
 			tf.summary.scalar(name='model_loss_fine_tune', data=final_fine_tune[0], step=0)
 
 			if timing_path is not None:
-				timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
-				timing_dump.append({'total_time': total_time})
-				timing_dump.append({'final_acc': final[1]})
-				timing_dump.append({'fine_tune_acc': final_fine_tune[1]})
-				with open(timing_path, 'w') as f:
-					json.dump(timing_dump, f, indent='\t')
+			    timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank'], 'score': target['score'][1]} for target in targets]
+			    timing_dump.append({'total_time': total_time})
+			    timing_dump.append({'final_acc': final[1]})
+			    timing_dump.append({'fine_tune_acc': final_fine_tune[1]})
+			    timing_dump.append({'threadhold': OG[1] - .15})
+			    with open(timing_path, 'w') as f:
+				    json.dump(timing_dump, f, indent='\t')
 
 
 			writer.flush()

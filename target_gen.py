@@ -16,7 +16,7 @@ EPOCHS = 64 if TEST == 1 else 2
 NUM_PROC = 2
 
 
-model = tf.keras.models.load_model('cifar10.h5')
+model = tf.keras.applications.vgg16.VGG16(weights='imagenet', include_top=True)
 model.compile(optimizer=tf.optimizers.SGD(learning_rate=.01, momentum=.9, nesterov=True), loss='mse', metrics=['acc'])
 
 import pprint
@@ -28,5 +28,5 @@ for i, layer in enumerate(model.layers):
             targets.append({'name': layer.name, 'layer': i})
 
 
-with open('targets_resnet.json', 'w') as fp:
+with open('targets_imagenet.json', 'w') as fp:
 	json.dump(targets, fp)
