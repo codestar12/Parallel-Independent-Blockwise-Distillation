@@ -217,7 +217,13 @@ def fine_tune_model(targets, args, score):
 	import tensorflow as tf
 	import tensorflow_datasets as tfds
 	import math
+
+	if args.arch == 'resnet':
+		from utils_resnet import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
+	elif args.arch == 'vgg':
+		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer 
 	
+	targets = list(targets)
 	list.sort(targets, key=lambda target: target['layer'])
 
 	tf.keras.backend.clear_session()
@@ -248,18 +254,18 @@ def fine_tune_model(targets, args, score):
 
 	dataset, info = tfds.load(args.dataset, with_info=True)
 	test_dataset = dataset['test'].map(lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	test_dataset = test_dataset.batch(global_batch_size).repeat()
+	test_dataset = test_dataset.batch(args.batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 	train = dataset['train']
-	if AUG:
+	if args.augment_data:
 		train = train.map(lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	else:
-		train = train.map(lambda x: load_image_test(x, (args.image_size, args.image_size), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+		train = train.map(lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 		train = train.cache()
-	train_dataset = train.batch(global_batch_size).repeat()
+	train_dataset = train.batch(args.batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	fine_tune_epochs = 60
+	fine_tune_epochs = 21
 	lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 				.00063,
 				decay_steps= math.ceil(args.train_size / args.batch_size  ) * fine_tune_epochs // 3,
@@ -271,7 +277,7 @@ def fine_tune_model(targets, args, score):
 	checkpoint = ModelCheckpoint('cifar10_resnet_modified_fine_tune.h5', monitor='val_accuracy', verbose=1, save_best_only=True)
 
 	model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-	model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="sparse_categorical_crossentropy", metrics=['accuracy'])
+	model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
 	final = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size))
 	fine_tune = model.fit(
 						x=train_dataset,
@@ -279,11 +285,11 @@ def fine_tune_model(targets, args, score):
 						steps_per_epoch=math.ceil(args.train_size / args.batch_size),
 						validation_data=test_dataset,
 						shuffle=False,
-						validation_steps=math.ceil(args.val_size / args.batch_size ),
+						validation_steps=math.ceil(args.val_size / args.batch_size ),:weights
 						verbose=1,
 						callbacks=[checkpoint])
 
 	model = tf.keras.models.load_model('cifar10_resnet_modified_fine_tune.h5')
 	final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size ))
 
-	return final_fine_tune
+	return final, final_fine_tune

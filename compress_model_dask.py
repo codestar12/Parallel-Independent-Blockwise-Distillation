@@ -1,4 +1,3 @@
-
 # from dask_cuda import LocalCUDACluster
 # from dask.distributed import Client
 # from dask.distributed import as_completed
@@ -21,6 +20,7 @@ if __name__ == '__main__':
 	import functools
 	import operator
 	import argparse
+	import time
 	
 
 	parser = argparse.ArgumentParser()
@@ -57,14 +57,14 @@ if __name__ == '__main__':
 	#	worker_module='dask_cuda.dask_cuda_worker'
 	#)
 	client = Client('tcp://127.0.0.1:8786')
-	from blockwise.train_layer import train_layer, get_targets, evaluate_model
+	from blockwise.train_layer import train_layer, get_targets, evaluate_model, fine_tune_model
 
 
 
 
 
 	score = dask.delayed(evaluate_model)(args)
-	score = dask.compute(score)
+	score = dask.compute(score)[0]
 
 	print(score)
 
@@ -74,18 +74,24 @@ if __name__ == '__main__':
 		print(get_worker().name)
 		return train_layer(target, args, get_worker().name)
 
+	tik = time.time()
 	targets = [dask.delayed(train_dask)(target, args) for target in targets]
 
 	targets = dask.compute(*targets)
-	#targets = client.map(lambda x: train_layer(x, args, targets)
-	final_fine_tune = final_fine_tune(targets, args, score)
 
-	if timing_path is not None:
+	tok = time.time()
+	total_time = tok - tik
+	#targets = client.map(lambda x: train_layer(x, args, targets)
+	final, final_fine_tune = fine_tune_model(targets, args, score)
+
+	if args.timing_path is not None:
 		timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank'], 'replaced': target['replaced'], 'score': target['score']} for target in targets]
 		timing_dump.append({'total_time': total_time})
 		timing_dump.append({'final_acc': final[1]})
 		timing_dump.append({'fine_tune_acc': final_fine_tune[1]})
-		with open(timing_path, 'w') as f:
+		with open(args.timing_path, 'w') as f:
 			json.dump(timing_dump, f, indent='\t')
+
+
 
 

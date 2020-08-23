@@ -2,7 +2,7 @@ IMAGE_SIZE=64
 BATCH_SIZE=512
 EPOCHS=30
 SUMMARY_PATH="/tmp/"
-TIMING_PATH="/tf/notebooks/timing_info/dask/one_gpu/resnet.json"
+TIMING_PATH="/tf/notebooks/timing_info/dask/two_gpu/resnet.json"
 ARCH="resnet"
 MODEL_PATH="/tf/notebooks/cifar10.h5"
 
@@ -19,7 +19,7 @@ python compress_model_dask.py \
     -mp=$MODEL_PATH 
 
 IMAGE_SIZE=32
-TIMING_PATH="/tf/notebooks/timing_info/dask/one_gpu/vgg.json"
+TIMING_PATH="/tf/notebooks/timing_info/dask/two_gpu/vgg.json"
 ARCH="vgg"
 MODEL_PATH="/tf/notebooks/base_model_cifar10_32_vgg16.h5"
 
