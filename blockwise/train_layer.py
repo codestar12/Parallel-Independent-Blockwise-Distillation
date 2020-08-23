@@ -257,11 +257,9 @@ def fine_tune_model(targets, args, score):
 	test_dataset = test_dataset.batch(args.batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 	train = dataset['train']
-	if args.augment_data:
-		train = train.map(lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	else:
-		train = train.map(lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-		train = train.cache()
+	
+	train = train.map(lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
 	train_dataset = train.batch(args.batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
