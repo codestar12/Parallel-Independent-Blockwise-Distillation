@@ -285,7 +285,7 @@ def fine_tune_model(targets, args, score):
 						steps_per_epoch=math.ceil(args.train_size / args.batch_size),
 						validation_data=test_dataset,
 						shuffle=False,
-						validation_steps=math.ceil(args.val_size / args.batch_size ),:weights
+						validation_steps=math.ceil(args.val_size / args.batch_size ),
 						verbose=1,
 						callbacks=[checkpoint])
 
