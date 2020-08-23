@@ -78,5 +78,14 @@ if __name__ == '__main__':
 
 	targets = dask.compute(*targets)
 	#targets = client.map(lambda x: train_layer(x, args, targets)
+	final_fine_tune = final_fine_tune(targets, args, score)
+
+	if timing_path is not None:
+		timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank'], 'replaced': target['replaced'], 'score': target['score']} for target in targets]
+		timing_dump.append({'total_time': total_time})
+		timing_dump.append({'final_acc': final[1]})
+		timing_dump.append({'fine_tune_acc': final_fine_tune[1]})
+		with open(timing_path, 'w') as f:
+			json.dump(timing_dump, f, indent='\t')
 
 
