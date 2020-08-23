@@ -1,0 +1,154 @@
+[
+	{
+		"name": "block1_conv1",
+		"layer": 1,
+		"run_time": 565.5967991352081,
+		"rank": "worker",
+		"replaced": true,
+		"score": [
+			0.5326319932937622,
+			0.8687999844551086
+		]
+	},
+	{
+		"name": "block1_conv2",
+		"layer": 2,
+		"run_time": 994.5861423015594,
+		"rank": "worker",
+		"replaced": true,
+		"score": [
+			0.6278713345527649,
+			0.8659999966621399
+		]
+	},
+	{
+		"name": "block2_conv1",
+		"layer": 4,
+		"run_time": 456.7001976966858,
+		"rank": "worker",
+		"replaced": true,
+		"score": [
+			0.6564537882804871,
+			0.8435999751091003
+		]
+	},
+	{
+		"name": "block2_conv2",
+		"layer": 5,
+		"run_time": 575.4896144866943,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.449300527572632,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block3_conv1",
+		"layer": 7,
+		"run_time": 259.5468351840973,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.4521284103393555,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block3_conv2",
+		"layer": 8,
+		"run_time": 348.6532142162323,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.4518179893493652,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block3_conv3",
+		"layer": 9,
+		"run_time": 329.50533723831177,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.4509124755859375,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block4_conv1",
+		"layer": 11,
+		"run_time": 177.75825762748718,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.4479012489318848,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block4_conv2",
+		"layer": 12,
+		"run_time": 200.17829132080078,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.446442127227783,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block4_conv3",
+		"layer": 13,
+		"run_time": 204.22346544265747,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.433767557144165,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block5_conv1",
+		"layer": 15,
+		"run_time": 143.69644355773926,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.4064829349517822,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block5_conv2",
+		"layer": 16,
+		"run_time": 150.2113995552063,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.3862528800964355,
+			0.10000000149011612
+		]
+	},
+	{
+		"name": "block5_conv3",
+		"layer": 17,
+		"run_time": 152.20380234718323,
+		"rank": "worker",
+		"replaced": false,
+		"score": [
+			2.3447210788726807,
+			0.10000000149011612
+		]
+	},
+	{
+		"total_time": 4558.573171377182
+	},
+	{
+		"final_acc": 0.8306999802589417
+	},
+	{
+		"fine_tune_acc": 0.866599977016449
+	}
+]
