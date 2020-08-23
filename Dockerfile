@@ -10,6 +10,8 @@ RUN pip install tensorflow-datasets
 RUN pip install matplotlib
 RUN pip install dask
 RUN pip install dask-cuda
+RUN pip install bokeh
 RUN jupyter serverextension enable --py jupyter_http_over_ws
+RUN python -m pip install jupyter-server-proxy
 COPY ./CPU_GPU_Profiling/ /CPU_GPU_Profiling/ 
 RUN make ./CPU_GPU_Profiling/

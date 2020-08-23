@@ -44,6 +44,7 @@ if __name__ == '__main__':
 						choices=['vgg', 'resnet'], default='resnet')
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
+	parser.add_argument('-ds', "--dataset", type=str, choices=['cifar10', 'imagenet'], default="cifar10")
 
 	args = parser.parse_args()
 
@@ -56,13 +57,16 @@ if __name__ == '__main__':
 	#	worker_module='dask_cuda.dask_cuda_worker'
 	#)
 	client = Client('tcp://127.0.0.1:8786')
-	from blockwise.train_layer import train_layer, get_targets
+	from blockwise.train_layer import train_layer, get_targets, evaluate_model
 
 
 
 
 
-	#evaluate_model()
+	score = dask.delayed(evaluate_model)(args)
+	score = dask.compute(score)
+
+	print(score)
 
 	targets = get_targets(args)
 

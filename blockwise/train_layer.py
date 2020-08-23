@@ -33,17 +33,17 @@ def train_layer(target, args, rank=0):
 	train = dataset['train'].with_options(options)
 	test = dataset['test'].with_options(options)
 	if args.augment_data:
-		train = train.map(lambda x: load_image_train(x, image_size, args.num_classes), num_parallel_calls=4)
+		train = train.map(lambda x: load_image_train(x, image_size, args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	else:
-		train = train.map(lambda x: load_image_test(x, image_size, args.num_classes), num_parallel_calls=4)
+		train = train.map(lambda x: load_image_test(x, image_size, args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 		train = train.cache()
 	train_dataset = train.shuffle(buffer_size=4000).batch(args.batch_size).repeat()
-	train_dataset = train_dataset.prefetch(buffer_size=2)
+	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	test_dataset = test.map(lambda x: load_image_test(x, image_size, args.num_classes), num_parallel_calls=4)
+	test_dataset = test.map(lambda x: load_image_test(x, image_size, args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	#test_dataset = test_dataset.cache()
 	test_dataset = test_dataset.batch(args.batch_size).repeat()
-	test_dataset = test_dataset.prefetch(buffer_size=2)
+	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 	writer = tf.summary.create_file_writer(args.summary_path + f"{target['name']}")
 	with writer.as_default():
@@ -168,3 +168,46 @@ def get_targets(args):
 				targets.append({'name': layer.name, 'layer': i})
 
 	return targets
+
+def evaluate_model(args):
+	import tensorflow as tf
+	import tensorflow_datasets as tfds
+	import math
+
+	physical_devices = tf.config.experimental.list_physical_devices('GPU')
+	assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+	for i in range(len(physical_devices)):
+			tf.config.experimental.set_memory_growth(physical_devices[i], True)
+
+
+	if args.arch == 'resnet':
+		from utils_resnet import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
+	elif args.arch == 'vgg':
+		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer   
+
+	dataset, info = tfds.load(args.dataset, with_info=True)
+	test = dataset['test']
+	train = dataset['train']
+
+	train = train.map(
+		lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), 
+		num_parallel_calls=tf.data.experimental.AUTOTUNE
+	)
+
+	train_dataset = train.shuffle(1000).batch(args.batch_size).repeat()
+	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+	test_dataset = test.map(
+		lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), 
+		num_parallel_calls=tf.data.experimental.AUTOTUNE
+	)
+
+	test_dataset = test_dataset.batch(args.batch_size).repeat()
+	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+	model = tf.keras.models.load_model(args.model_path)
+
+	model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
+	score = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size / args.test_multiplier))
+
+	return score
