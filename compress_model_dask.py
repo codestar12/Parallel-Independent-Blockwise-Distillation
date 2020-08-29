@@ -49,14 +49,14 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	from dask.distributed import SSHCluster
-	#cluster = LocalCUDACluster()
+	cluster = LocalCUDACluster()
 	#cluster = SSHCluster(
 	#	['localhost', 'localhost', 'localhost', 'localhost', 'localhost'],
 	#	connect_options={'known_hosts': None},:
 	#	scheduler_options={'port': 0, "dashboard_address": ":8787"},
 	#	worker_module='dask_cuda.dask_cuda_worker'
 	#)
-	client = Client('tcp://127.0.0.1:8786')
+	client = Client(cluster)
 	from blockwise.train_layer import train_layer, get_targets, evaluate_model, fine_tune_model
 
 

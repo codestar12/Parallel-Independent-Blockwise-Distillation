@@ -338,7 +338,7 @@ def fine_tune_model(targets, args, score):
 	train_dataset = train.batch(args.batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	fine_tune_epochs = 2
+	fine_tune_epochs = 60
 	lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 				.00063,
 				decay_steps= math.ceil(args.train_size / args.batch_size  ) * fine_tune_epochs // 3,
