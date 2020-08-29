@@ -27,11 +27,19 @@ def train_layer(target, args, rank=0):
 		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 
 	layer_start = time.time()
-	dataset, info = tfds.load('cifar10', with_info=True)
-	options = tf.data.Options()
-	options.experimental_threading.max_intra_op_parallelism = 1
-	train = dataset['train'].with_options(options)
-	test = dataset['test'].with_options(options)
+	if args.dataset == 'cifar10':
+		dataset, info = tfds.load('cifar10', with_info=True)
+		options = tf.data.Options()
+		options.experimental_threading.max_intra_op_parallelism = 1
+		train = dataset['train'].with_options(options)
+		test = dataset['test'].with_options(options)
+	elif args.dataset == 'imagenet':
+		dataset, info = tfds.load('imagenet2012', with_info=True)
+		options = tf.data.Options()
+		options.experimental_threading.max_intra_op_parallelism = 1
+		train = dataset['train'].with_options(options)
+		test = dataset['validation'].with_options(options)
+
 	if args.augment_data:
 		train = train.map(lambda x: load_image_train(x, image_size, args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	else:
@@ -50,7 +58,15 @@ def train_layer(target, args, rank=0):
 		print(f"training layer {target['name']}")
 		tf.keras.backend.clear_session()
 		print("cleared backend")
-		model = tf.keras.models.load_model(args.model_path)
+
+		if args.dataset != 'imagenet':
+			model = tf.keras.models.load_model(args.model_path)
+		else:
+			if args.arch == 'resnet':
+				model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+			else:
+				model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
+
 		print("model loaded")
 		in_layer = target['layer']
 		get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
@@ -85,7 +101,15 @@ def train_layer(target, args, rank=0):
 		for epoch in range(args.epochs):
 			if epoch % 2 == 0:
 				tf.keras.backend.clear_session()
-				model = tf.keras.models.load_model(args.model_path)
+
+				if args.dataset != 'imagenet':
+					model = tf.keras.models.load_model(args.model_path)
+				else:
+					if args.arch == 'resnet':
+						model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+					else:
+						model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
+
 				in_layer = target['layer']
 				get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
 																		model.layers[in_layer].output])
@@ -116,7 +140,14 @@ def train_layer(target, args, rank=0):
 
 				tf.keras.backend.clear_session()
 
-				model = tf.keras.models.load_model(args.model_path)
+				if args.dataset != 'imagenet':
+					model = tf.keras.models.load_model(args.model_path)
+				else:
+					if args.arch == 'resnet':
+						model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+					else:
+						model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
+
 				layer_name = target['name']
 				layer_pos = target['layer']
 				filters = model.layers[layer_pos].output.shape[-1]
@@ -158,7 +189,15 @@ def get_targets(args):
 
 	from tensorflow.keras import models
 
-	model = models.load_model(args.model_path)
+	
+	if args.dataset != 'imagenet':
+		model = tf.keras.models.load_model(args.model_path)
+	else:
+		if args.arch == 'resnet':
+			model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+		else:
+			model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
+
 
 	targets = []
 	for i, layer in enumerate(model.layers):
@@ -175,6 +214,9 @@ def evaluate_model(args):
 	import tensorflow_datasets as tfds
 	import math
 
+
+	val_size = args.val_size
+
 	physical_devices = tf.config.experimental.list_physical_devices('GPU')
 	assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
 	for i in range(len(physical_devices)):
@@ -186,9 +228,17 @@ def evaluate_model(args):
 	elif args.arch == 'vgg':
 		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer   
 
-	dataset, info = tfds.load(args.dataset, with_info=True)
-	test = dataset['test']
-	train = dataset['train']
+	if args.dataset == 'cifar10':
+		dataset, info = tfds.load(args.dataset, with_info=True)
+		test = dataset['test']
+		train = dataset['train']
+	elif args.dataset == 'imagenet':
+		dataset, info = tfds.load('imagenet2012', with_info=True)
+		print(info)
+		test = dataset['validation']
+		train = dataset['train']
+		val_size = 50000
+
 
 	train = train.map(
 		lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), 
@@ -206,10 +256,16 @@ def evaluate_model(args):
 	test_dataset = test_dataset.batch(args.batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	model = tf.keras.models.load_model(args.model_path)
+	if args.dataset != 'imagenet':
+		model = tf.keras.models.load_model(args.model_path)
+	else:
+		if args.arch == 'resnet':
+			model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+		else:
+			model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 
 	model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
-	score = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size / args.test_multiplier))
+	score = model.evaluate(test_dataset, steps=math.ceil(val_size / args.batch_size / args.test_multiplier))
 
 	return score
 
@@ -228,7 +284,13 @@ def fine_tune_model(targets, args, score):
 
 	tf.keras.backend.clear_session()
 
-	model = tf.keras.models.load_model(args.model_path)
+	if args.dataset != 'imagenet':
+		model = tf.keras.models.load_model(args.model_path)
+	else:
+		if args.arch == 'resnet':
+			model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
+		else:
+			model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
 	model.save('cifar10_resnet_modified.h5')
 	for target in targets[::-1]:
 		target['replaced'] = False
@@ -252,18 +314,29 @@ def fine_tune_model(targets, args, score):
 
 	tf.keras.backend.clear_session()
 
-	dataset, info = tfds.load(args.dataset, with_info=True)
-	test_dataset = dataset['test'].map(lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+	val_size = args.val_size
+
+	if args.dataset == 'cifar10':
+		dataset, info = tfds.load(args.dataset, with_info=True)
+		test = dataset['test']
+		train = dataset['train']
+	elif args.dataset == 'imagenet':
+		dataset, info = tfds.load('imagenet2012', with_info=True)
+		print(info)
+		test = dataset['validation']
+		train = dataset['train']
+		val_size = 50000
+		
+	test_dataset = test.map(lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	test_dataset = test_dataset.batch(args.batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-	train = dataset['train']
 	
 	train = train.map(lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 	train_dataset = train.batch(args.batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	fine_tune_epochs = 21
+	fine_tune_epochs = 2
 	lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 				.00063,
 				decay_steps= math.ceil(args.train_size / args.batch_size  ) * fine_tune_epochs // 3,
@@ -276,18 +349,18 @@ def fine_tune_model(targets, args, score):
 
 	model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
 	model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
-	final = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size))
+	final = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size / args.test_multiplier))
 	fine_tune = model.fit(
 						x=train_dataset,
 						epochs=fine_tune_epochs,
-						steps_per_epoch=math.ceil(args.train_size / args.batch_size),
+						steps_per_epoch=math.ceil(args.train_size / args.batch_size / args.test_multiplier),
 						validation_data=test_dataset,
 						shuffle=False,
-						validation_steps=math.ceil(args.val_size / args.batch_size ),
+						validation_steps=math.ceil(args.val_size / args.batch_size / args.test_multiplier),
 						verbose=1,
 						callbacks=[checkpoint])
 
 	model = tf.keras.models.load_model('cifar10_resnet_modified_fine_tune.h5')
-	final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(args.val_size / args.batch_size ))
+	final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(val_size / args.batch_size / args.test_multiplier))
 
-	return final, final_fine_tune
+	return final, final_fine_tune, targets

@@ -60,7 +60,7 @@ if __name__ == '__main__':
 	from blockwise.train_layer import train_layer, get_targets, evaluate_model, fine_tune_model
 
 
-
+	print(f"number of classes is {args.num_classes}")
 
 
 	score = dask.delayed(evaluate_model)(args)
@@ -82,7 +82,9 @@ if __name__ == '__main__':
 	tok = time.time()
 	total_time = tok - tik
 	#targets = client.map(lambda x: train_layer(x, args, targets)
-	final, final_fine_tune = fine_tune_model(targets, args, score)
+	results = dask.delayed(fine_tune_model)(targets, args, score)
+	results = dask.compute(results)
+	final, final_fine_tune, targets = results[0]
 
 	if args.timing_path is not None:
 		timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank'], 'replaced': target['replaced'], 'score': target['score']} for target in targets]
