@@ -27,8 +27,8 @@ def train_layer(target, args, rank=0):
 		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 
 	layer_start = time.time()
-	if args.dataset == 'cifar10':
-		dataset, info = tfds.load('cifar10', with_info=True)
+	if args.dataset != 'imagenet':
+		dataset, info = tfds.load(args.dataset, with_info=True)
 		options = tf.data.Options()
 		options.experimental_threading.max_intra_op_parallelism = 1
 		train = dataset['train'].with_options(options)
@@ -228,7 +228,8 @@ def evaluate_model(args):
 	elif args.arch == 'vgg':
 		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer   
 
-	if args.dataset == 'cifar10':
+	if args.dataset != 'imagenet':
+		print("here")
 		dataset, info = tfds.load(args.dataset, with_info=True)
 		test = dataset['test']
 		train = dataset['train']
@@ -316,7 +317,7 @@ def fine_tune_model(targets, args, score):
 
 	val_size = args.val_size
 
-	if args.dataset == 'cifar10':
+	if args.dataset != 'imagenet':
 		dataset, info = tfds.load(args.dataset, with_info=True)
 		test = dataset['test']
 		train = dataset['train']

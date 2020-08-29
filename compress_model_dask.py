@@ -44,7 +44,7 @@ if __name__ == '__main__':
 						choices=['vgg', 'resnet'], default='resnet')
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
-	parser.add_argument('-ds', "--dataset", type=str, choices=['cifar10', 'imagenet'], default="cifar10")
+	parser.add_argument('-ds', "--dataset", type=str, choices=['cifar10','cifar100', 'imagenet'], default="cifar10")
 
 	args = parser.parse_args()
 
