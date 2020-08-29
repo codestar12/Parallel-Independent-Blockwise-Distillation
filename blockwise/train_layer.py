@@ -72,8 +72,9 @@ def train_layer(target, args, rank=0):
 		get_output = tf.keras.Model(inputs=model.input, outputs=[model.layers[in_layer - 1].output,
 																model.layers[in_layer].output])
 
-
-		replacement_layers = build_replacement(get_output, layers=2)
+		strides = model.layers[in_layer].strides
+		print(f"Strides are {strides}")
+		replacement_layers = build_replacement(get_output, layers=2, padding="Valid" if args.dataset == 'cifar100' else "Same", strides=strides)
 		replacement_len = len(replacement_layers.layers)
 		layer_train_gen = LayerBatch(get_output, train_dataset, args.train_size, args.batch_size)
 		layer_test_gen = LayerBatch(get_output, test_dataset, args.val_size, args.batch_size)
@@ -152,7 +153,7 @@ def train_layer(target, args, rank=0):
 				layer_pos = target['layer']
 				filters = model.layers[layer_pos].output.shape[-1]
 
-				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
+				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters, model.layers[layer_pos].strides))
 				new_model.layers[layer_pos].set_weights(weights[0])
 				new_model.layers[layer_pos + 2].set_weights(weights[1])
 				new_model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
@@ -304,7 +305,7 @@ def fine_tune_model(targets, args, score):
 
 
 
-			new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
+			new_model = replace_layer(model, layer_name, lambda x: replac(x, filters, model.layers[layer_pos].strides))
 			new_model.layers[layer_pos].set_weights(target['weights'][0])
 			new_model.layers[layer_pos + 2].set_weights(target['weights'][1])
 

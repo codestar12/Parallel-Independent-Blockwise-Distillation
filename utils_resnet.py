@@ -126,11 +126,11 @@ class LayerBatch(tf.keras.utils.Sequence):
 
 
 
-def add_layers(inputs, filters, layers=2):
+def add_layers(inputs, filters, layers=2, padding='Same', strides=(1,1)):
     print(inputs.get_shape())
     X = tf.keras.layers.SeparableConv2D(name=f'sep_conv_{build_replacement.counter}', filters=filters,
                                         kernel_size= (3,3),
-                                        padding='Same')(inputs)
+                                        padding='valid', strides=strides)(inputs)
     #X = tf.keras.layers.BatchNormalization(name=f'batch_norm_{build_replacement.counter}')(X)
     X = tf.keras.layers.ReLU(name=f'relu_{build_replacement.counter}')(X)
 
@@ -139,25 +139,25 @@ def add_layers(inputs, filters, layers=2):
     for i in range(1, layers):
         X = tf.keras.layers.SeparableConv2D(name=f'sep_conv_{build_replacement.counter}', filters=filters,
                                             kernel_size=(3,3),
-                                            padding='Same')(X)
+                                            padding='same')(X)
         #X = tf.keras.layers.BatchNormalization(name=f'batch_norm_{build_replacement.counter}')(X)
         X = tf.keras.layers.ReLU(name=f'relu_{build_replacement.counter}')(X)
         build_replacement.counter += 1
 
     return X
 
-def build_replacement(get_output, layers=2):
+def build_replacement(get_output, layers=2, padding='Same', strides=(1, 1)):
     inputs = tf.keras.Input(shape=get_output.output[0].shape[1::])
 
-    X = add_layers(inputs, get_output.output[1].shape[-1], layers)
+    X = add_layers(inputs, get_output.output[1].shape[-1], layers, padding=padding, strides=strides)
     replacement_layers = tf.keras.Model(inputs=inputs, outputs=X)
     return replacement_layers
 
 build_replacement.counter = 0
 
-def replac(inp, filters):
+def replac(inp, filters, strides):
 
-    return add_layers(inp, filters,layers=2)
+    return add_layers(inp, filters,layers=2, strides=strides)
 
 def make_list(X):
     if isinstance(X, list):
@@ -200,7 +200,7 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
             outp_names = [out.name for out in make_list(layer.get_output_at(j))]
 
             ### setup model inputs
-            if 'input' in layer.name:
+            if 'input' in layer.name or 'data' == layer.name:
                 for inpt_tsr in make_list(layer.get_output_at(j)):
                     model_inputs.append(inpt_tsr)
                     tsr_dict[inpt_tsr.name] = inpt_tsr
@@ -212,7 +212,7 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
 
             ### remake layer
             if layer.name in replace_layer_subname:
-              if "relu" in layer.name or 'bn' in layer.name:
+              if "relu" in layer.name or 'bn' in layer.name :
                 print('deleting ' + layer.name)
                 x = inpt
               else:
@@ -228,7 +228,7 @@ def replace_layer(model, replace_layer_subname, replacement_fn,
                 if name in model_output_names:
                     model_outputs.append(out_tsr)
                 tsr_dict[name] = out_tsr
-
+    print(model_inputs)
     return tf.keras.models.Model(model_inputs, model_outputs)
 
 
