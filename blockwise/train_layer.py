@@ -84,7 +84,7 @@ def train_layer(target, args, rank=0):
 
 		MSE = tf.losses.MeanSquaredError()
 
-		starting_lr = 2e-2
+		starting_lr = args.learning_rate
 		initial_learning_rate = 0.1
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 			starting_lr,
@@ -340,7 +340,7 @@ def fine_tune_model(targets, args, score):
 
 	fine_tune_epochs = 60
 	lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-				.00063,
+				args.finetune_learning_rate,
 				decay_steps= math.ceil(args.train_size / args.batch_size  ) * fine_tune_epochs // 3,
 				decay_rate=0.96,
 				staircase=False)

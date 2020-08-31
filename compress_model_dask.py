@@ -45,6 +45,9 @@ if __name__ == '__main__':
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 	parser.add_argument('-ds', "--dataset", type=str, choices=['cifar10','cifar100', 'imagenet'], default="cifar10")
+	parser.add_argument('-fe', "--finetune_epochs", type=int, default=30, help="epochs for finetuning final model")
+	parser.add_argument('-flr' "--finetune_learning_rate",  type=float, default=.00063, help="fine_tune_starting_lr")
+	parser.add_argument('-lr', "--learning_rate",  type=float, default=2e-2, help="layer starting learning rate")
 
 	args = parser.parse_args()
 
