@@ -18,6 +18,7 @@ def train_layer(target, args, rank=0):
 	for i in range(len(physical_devices)):
 		tf.config.experimental.set_memory_growth(physical_devices[i], True)
 	import tensorflow_datasets as tfds
+	import numpy as np
 
 	image_size = (args.image_size, args.image_size)
 
@@ -88,7 +89,7 @@ def train_layer(target, args, rank=0):
 		initial_learning_rate = 0.1
 		lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 			starting_lr,
-			decay_steps=3000,
+			decay_steps=math.ceil(args.epochs * args.train_size / args.batch_size / 4),
 			decay_rate=0.96,
 			staircase=True)
 
@@ -100,7 +101,7 @@ def train_layer(target, args, rank=0):
 
 		print('epochs started')
 		for epoch in range(args.epochs):
-			if epoch % 2 == 0:
+			if epoch % 6 == 0:
 				tf.keras.backend.clear_session()
 
 				if args.dataset != 'imagenet':
@@ -134,7 +135,7 @@ def train_layer(target, args, rank=0):
 			tf.summary.scalar(name='rep_loss', data=history.history['loss'][0], step=epoch)
 			tf.summary.scalar(name='val_loss', data=history.history['val_loss'][0], step=epoch)
 
-			if epoch % 2 == 0:
+			if epoch % 6 == 0:
 				replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
 				weights = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
@@ -169,7 +170,7 @@ def train_layer(target, args, rank=0):
 				print(f"epoch: {epoch}, rep loss {history.history['loss']}, val loss {history.history['val_loss']}, model acc {score[1]}")
 
 				if args.early_stopping:
-					if np.abs(OG[1] - target['score'][1] < 0.002):
+					if np.abs(args.OG[1] - target['score'][1] < 0.0116):
 						print('stoping early')
 						break
 
@@ -190,7 +191,7 @@ def get_targets(args):
 
 	from tensorflow.keras import models
 
-	
+
 	if args.dataset != 'imagenet':
 		model = tf.keras.models.load_model(args.model_path)
 	else:
@@ -210,7 +211,7 @@ def get_targets(args):
 	return targets
 
 def evaluate_model(args):
-	
+
 	import tensorflow as tf
 	import tensorflow_datasets as tfds
 	import math
@@ -227,7 +228,7 @@ def evaluate_model(args):
 	if args.arch == 'resnet':
 		from utils_resnet import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 	elif args.arch == 'vgg':
-		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer   
+		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 
 	if args.dataset != 'imagenet':
 		print("here")
@@ -243,7 +244,7 @@ def evaluate_model(args):
 
 
 	train = train.map(
-		lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), 
+		lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes),
 		num_parallel_calls=tf.data.experimental.AUTOTUNE
 	)
 
@@ -251,7 +252,7 @@ def evaluate_model(args):
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 	test_dataset = test.map(
-		lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), 
+		lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes),
 		num_parallel_calls=tf.data.experimental.AUTOTUNE
 	)
 
@@ -279,8 +280,8 @@ def fine_tune_model(targets, args, score):
 	if args.arch == 'resnet':
 		from utils_resnet import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
 	elif args.arch == 'vgg':
-		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer 
-	
+		from utils import load_image_train, load_image_test, build_replacement, LayerBatch, replac, replace_layer
+
 	targets = list(targets)
 	list.sort(targets, key=lambda target: target['layer'])
 
@@ -293,10 +294,16 @@ def fine_tune_model(targets, args, score):
 			model = tf.keras.applications.ResNet50(include_top=True, weights='imagenet')
 		else:
 			model = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
+
+	if args.freeze_layers:
+		for layer in model.layers:
+			layer.trainable = False
+
 	model.save('cifar10_resnet_modified.h5')
+
 	for target in targets[::-1]:
 		target['replaced'] = False
-		if score[1] - target['score'][1] < 0.15:
+		if score[1] - target['score'][1] < 0.04:
 			print(f'replacing layer {target["name"]}')
 			target['replaced'] = True
 			layer_name = target['name']
@@ -328,22 +335,23 @@ def fine_tune_model(targets, args, score):
 		test = dataset['validation']
 		train = dataset['train']
 		val_size = 50000
-		
+
 	test_dataset = test.map(lambda x: load_image_test(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 	test_dataset = test_dataset.batch(args.batch_size).repeat()
 	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-	
+
 	train = train.map(lambda x: load_image_train(x, (args.image_size, args.image_size), args.num_classes), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 	train_dataset = train.batch(args.batch_size).repeat()
 	train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
-	fine_tune_epochs = 60
+	fine_tune_epochs = args.finetune_epochs
+	lr = args.finetune_learning_rate
 	lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-				args.finetune_learning_rate,
+				lr,
 				decay_steps= math.ceil(args.train_size / args.batch_size  ) * fine_tune_epochs // 3,
 				decay_rate=0.96,
-				staircase=False)
+				staircase=True)
 
 	from tensorflow.keras.callbacks import ModelCheckpoint
 

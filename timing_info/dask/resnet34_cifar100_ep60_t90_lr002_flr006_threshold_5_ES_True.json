@@ -1,0 +1,363 @@
+[
+	{
+		"name": "stage1_unit1_conv1",
+		"layer": 11,
+		"run_time": 1116.7445199489594,
+		"rank": 0,
+		"replaced": false,
+		"score": [
+			4.550549030303955,
+			0.32670000195503235
+		]
+	},
+	{
+		"name": "stage1_unit1_conv2",
+		"layer": 15,
+		"run_time": 1182.0899586677551,
+		"rank": 1,
+		"replaced": false,
+		"score": [
+			2.3224105834960938,
+			0.6547999978065491
+		]
+	},
+	{
+		"name": "stage1_unit2_conv1",
+		"layer": 21,
+		"run_time": 1230.852076292038,
+		"rank": 2,
+		"replaced": false,
+		"score": [
+			3.6756742000579834,
+			0.43650001287460327
+		]
+	},
+	{
+		"name": "stage1_unit2_conv2",
+		"layer": 25,
+		"run_time": 1239.2962353229523,
+		"rank": 3,
+		"replaced": false,
+		"score": [
+			2.95874285697937,
+			0.5443000197410583
+		]
+	},
+	{
+		"name": "stage1_unit3_conv1",
+		"layer": 30,
+		"run_time": 1227.3711059093475,
+		"rank": 3,
+		"replaced": false,
+		"score": [
+			3.247408390045166,
+			0.5157999992370605
+		]
+	},
+	{
+		"name": "stage1_unit3_conv2",
+		"layer": 34,
+		"run_time": 1275.1756255626678,
+		"rank": 1,
+		"replaced": false,
+		"score": [
+			2.230285882949829,
+			0.6671000123023987
+		]
+	},
+	{
+		"name": "stage2_unit1_conv1",
+		"layer": 39,
+		"run_time": 1155.27081656456,
+		"rank": 0,
+		"replaced": false,
+		"score": [
+			3.4179301261901855,
+			0.46050000190734863
+		]
+	},
+	{
+		"name": "stage2_unit1_conv2",
+		"layer": 43,
+		"run_time": 1093.2694208621979,
+		"rank": 3,
+		"replaced": false,
+		"score": [
+			8.662291526794434,
+			0.04600000008940697
+		]
+	},
+	{
+		"name": "stage2_unit2_conv1",
+		"layer": 49,
+		"run_time": 1207.5001537799835,
+		"rank": 3,
+		"replaced": false,
+		"score": [
+			2.525928497314453,
+			0.5999000072479248
+		]
+	},
+	{
+		"name": "stage2_unit2_conv2",
+		"layer": 53,
+		"run_time": 1209.8205966949463,
+		"rank": 3,
+		"replaced": false,
+		"score": [
+			2.330709457397461,
+			0.6466000080108643
+		]
+	},
+	{
+		"name": "stage2_unit3_conv1",
+		"layer": 58,
+		"run_time": 1202.7441761493683,
+		"rank": 1,
+		"replaced": false,
+		"score": [
+			3.92248797416687,
+			0.44780001044273376
+		]
+	},
+	{
+		"name": "stage2_unit3_conv2",
+		"layer": 62,
+		"run_time": 1255.3617746829987,
+		"rank": 2,
+		"replaced": false,
+		"score": [
+			2.226555347442627,
+			0.6639000177383423
+		]
+	},
+	{
+		"name": "stage2_unit4_conv1",
+		"layer": 67,
+		"run_time": 1258.3108627796173,
+		"rank": 0,
+		"replaced": false,
+		"score": [
+			2.79868483543396,
+			0.551800012588501
+		]
+	},
+	{
+		"name": "stage2_unit4_conv2",
+		"layer": 71,
+		"run_time": 1254.8100097179413,
+		"rank": 1,
+		"replaced": true,
+		"score": [
+			2.075584650039673,
+			0.6913999915122986
+		]
+	},
+	{
+		"name": "stage3_unit1_conv1",
+		"layer": 76,
+		"run_time": 1264.0151114463806,
+		"rank": 0,
+		"replaced": false,
+		"score": [
+			2.1915321350097656,
+			0.6539999842643738
+		]
+	},
+	{
+		"name": "stage3_unit1_conv2",
+		"layer": 80,
+		"run_time": 1321.5504035949707,
+		"rank": 0,
+		"replaced": false,
+		"score": [
+			3.5641121864318848,
+			0.37540000677108765
+		]
+	},
+	{
+		"name": "stage3_unit2_conv1",
+		"layer": 86,
+		"run_time": 1296.8715462684631,
+		"rank": 1,
+		"replaced": false,
+		"score": [
+			2.99298095703125,
+			0.49390000104904175
+		]
+	},
+	{
+		"name": "stage3_unit2_conv2",
+		"layer": 90,
+		"run_time": 1317.5752868652344,
+		"rank": 0,
+		"replaced": false,
+		"score": [
+			2.4354095458984375,
+			0.6122000217437744
+		]
+	},
+	{
+		"name": "stage3_unit3_conv1",
+		"layer": 95,
+		"run_time": 519.7098159790039,
+		"rank": 0,
+		"replaced": true,
+		"score": [
+			2.0068798065185547,
+			0.7001000046730042
+		]
+	},
+	{
+		"name": "stage3_unit3_conv2",
+		"layer": 99,
+		"run_time": 1027.7276890277863,
+		"rank": 1,
+		"replaced": true,
+		"score": [
+			2.0286030769348145,
+			0.6949999928474426
+		]
+	},
+	{
+		"name": "stage3_unit4_conv1",
+		"layer": 104,
+		"run_time": 1322.2436134815216,
+		"rank": 2,
+		"replaced": true,
+		"score": [
+			2.0369532108306885,
+			0.6883999705314636
+		]
+	},
+	{
+		"name": "stage3_unit4_conv2",
+		"layer": 108,
+		"run_time": 107.93384504318237,
+		"rank": 0,
+		"replaced": true,
+		"score": [
+			2.0000739097595215,
+			0.7002999782562256
+		]
+	},
+	{
+		"name": "stage3_unit5_conv1",
+		"layer": 113,
+		"run_time": 1430.793522119522,
+		"rank": 1,
+		"replaced": true,
+		"score": [
+			2.0379037857055664,
+			0.6953999996185303
+		]
+	},
+	{
+		"name": "stage3_unit5_conv2",
+		"layer": 117,
+		"run_time": 1422.5644855499268,
+		"rank": 2,
+		"replaced": true,
+		"score": [
+			2.019098997116089,
+			0.6969000101089478
+		]
+	},
+	{
+		"name": "stage3_unit6_conv1",
+		"layer": 122,
+		"run_time": 1467.0554060935974,
+		"rank": 2,
+		"replaced": false,
+		"score": [
+			2.451516628265381,
+			0.5993000268936157
+		]
+	},
+	{
+		"name": "stage3_unit6_conv2",
+		"layer": 126,
+		"run_time": 441.0612533092499,
+		"rank": 3,
+		"replaced": true,
+		"score": [
+			2.009005069732666,
+			0.699999988079071
+		]
+	},
+	{
+		"name": "stage4_unit1_conv1",
+		"layer": 131,
+		"run_time": 1466.6045129299164,
+		"rank": 0,
+		"replaced": true,
+		"score": [
+			2.0018715858459473,
+			0.6751999855041504
+		]
+	},
+	{
+		"name": "stage4_unit1_conv2",
+		"layer": 135,
+		"run_time": 1559.8109481334686,
+		"rank": 2,
+		"replaced": false,
+		"score": [
+			2.1359899044036865,
+			0.6378999948501587
+		]
+	},
+	{
+		"name": "stage4_unit2_conv1",
+		"layer": 141,
+		"run_time": 1546.4512467384338,
+		"rank": 2,
+		"replaced": false,
+		"score": [
+			4.110744953155518,
+			0.2345000058412552
+		]
+	},
+	{
+		"name": "stage4_unit2_conv2",
+		"layer": 145,
+		"run_time": 1564.6405727863312,
+		"rank": 3,
+		"replaced": true,
+		"score": [
+			2.0028107166290283,
+			0.6985999941825867
+		]
+	},
+	{
+		"name": "stage4_unit3_conv1",
+		"layer": 150,
+		"run_time": 1597.4505314826965,
+		"rank": 1,
+		"replaced": false,
+		"score": [
+			2.918414831161499,
+			0.5580999851226807
+		]
+	},
+	{
+		"name": "stage4_unit3_conv2",
+		"layer": 154,
+		"run_time": 1612.6309390068054,
+		"rank": 3,
+		"replaced": false,
+		"score": [
+			2.1958467960357666,
+			0.6119999885559082
+		]
+	},
+	{
+		"total_time": 10272.831745386124
+	},
+	{
+		"final_acc": 0.352400004863739
+	},
+	{
+		"fine_tune_acc": 0.6929000020027161
+	}
+]

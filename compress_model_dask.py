@@ -46,10 +46,13 @@ if __name__ == '__main__':
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 	parser.add_argument('-ds', "--dataset", type=str, choices=['cifar10','cifar100', 'imagenet'], default="cifar10")
 	parser.add_argument('-fe', "--finetune_epochs", type=int, default=30, help="epochs for finetuning final model")
-	parser.add_argument('-flr' "--finetune_learning_rate",  type=float, default=.00063, help="fine_tune_starting_lr")
+	parser.add_argument('-flr', "--finetune_learning_rate",  type=float, default=.00063, help="fine_tune_starting_lr")
 	parser.add_argument('-lr', "--learning_rate",  type=float, default=2e-2, help="layer starting learning rate")
+	parser.add_argument('-fr', "--freeze_layers", type=bool, default=False, help="freeze non-replaced layers")
 
 	args = parser.parse_args()
+	
+	print(args.finetune_learning_rate)
 
 	from dask.distributed import SSHCluster
 	cluster = LocalCUDACluster()
@@ -68,6 +71,8 @@ if __name__ == '__main__':
 
 	score = dask.delayed(evaluate_model)(args)
 	score = dask.compute(score)[0]
+
+	args.OG = score
 
 	print(score)
 
