@@ -14,6 +14,7 @@ ARCH = 'resnet'
 MODEL_PATH = ""
 AUG = True
 TARGET_FILE = ""
+DATA_SET="cifar10"
 
 import os
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -33,9 +34,11 @@ import tensorflow_datasets as tfds
 import numpy as np
 import math
 import time
+import os
+import gc
 
 
-def train_layer(target, rank=0):
+def train_layer(target, train_dataset, test_dataset, rank=0):
 
 	"""Trains a replacement layer given a target
 
@@ -47,23 +50,7 @@ def train_layer(target, rank=0):
 	"""
 
 	layer_start = time.time()
-	dataset, info = tfds.load('cifar10', with_info=True)
-	options = tf.data.Options()
-	options.experimental_threading.max_intra_op_parallelism = 1
-	train = dataset['train'].with_options(options)
-	test = dataset['test'].with_options(options)
-	if AUG:
-		train = train.map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
-	else:
-		train = train.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
-		train = train.cache()
-	train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
-	train_dataset = train_dataset.prefetch(buffer_size=2)
 
-	test_dataset = test.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
-	#test_dataset = test_dataset.cache()
-	test_dataset = test_dataset.batch(global_batch_size).repeat()
-	test_dataset = test_dataset.prefetch(buffer_size=2)
 
 	writer = tf.summary.create_file_writer(SUMMARY_PATH + f"{target['name']}")
 	with writer.as_default():
@@ -104,7 +91,9 @@ def train_layer(target, rank=0):
 		print('epochs started')
 		for epoch in range(EPOCHS):
 
-			if epoch % 2 == 0:
+			if epoch % 5 == 0:
+				del replacement_layers, layer_train_gen, layer_test_gen
+				gc.collect()
 				tf.keras.backend.clear_session()
 				model = tf.keras.models.load_model(MODEL_PATH)
 				in_layer = target['layer']
@@ -130,7 +119,7 @@ def train_layer(target, rank=0):
 			tf.summary.scalar(name='rep_loss', data=history.history['loss'][0], step=epoch)
 			tf.summary.scalar(name='val_loss', data=history.history['val_loss'][0], step=epoch)
 
-			if epoch % 2 == 0:
+			if epoch % 5 == 0:
 				replacement_layers.save(f'/tmp/layer_{rank}.h5')
 
 				weights = [replacement_layers.layers[1].get_weights(), replacement_layers.layers[3].get_weights()]
@@ -145,9 +134,12 @@ def train_layer(target, rank=0):
 				new_model = replace_layer(model, layer_name, lambda x: replac(x, filters))
 				new_model.layers[layer_pos].set_weights(weights[0])
 				new_model.layers[layer_pos + 2].set_weights(weights[1])
-				new_model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="categorical_crossentropy", metrics=['accuracy'])
+				new_model.compile(optimizer=tf.keras.optimizers.SGD(.1), loss="sparse_categorical_crossentropy", metrics=['accuracy'])
 				score = new_model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 
+				del new_model
+				gc.collect()
+				
 				if score[1] > target['score'][1]:
 					target['score'] = score
 					target['weights'] = weights
@@ -168,6 +160,8 @@ def train_layer(target, rank=0):
 	layer_time = layer_end - layer_start
 	target['run_time'] = layer_time
 	target['rank'] = rank
+	del replacement_layers, layer_train_gen, layer_test_gen, model, train_dataset, test_dataset
+	gc.collect() 
 	return target
 
 
@@ -197,11 +191,12 @@ if __name__ == '__main__':
 	parser.add_argument("-sd", "--schedule", type=str, help="file name and path for schedule")
 	parser.add_argument("-ar", "--arch", type=str,
 						help="model architecture being compressed ex. vgg, resnet",
-						choices=['vgg', 'resnet'], default='resnet')
+						choices=['vgg', 'resnet', 'vgg19'], default='resnet')
 	parser.add_argument("-mp", "--model_path", type=str, help="file path to saved model file", default='cifar10.h5')
 	parser.add_argument('-aug', "--augment_data", type=bool, default=True, help="Whether or not to augement images or cache them")
 	parser.add_argument("-tf", "--target_file_path", type=str, help="path to target file", default='targets_resnet.json')
 	parser.add_argument("-fr", "--freeze_layers", type=bool, default=False, help="whether to freeze unreplaced layers")
+	parser.add_argument("-ds", "--data_set", type=str, choices=['cifar10', 'beans', 'bean_scrap'], default="cifar10")
 
 	args = parser.parse_args()
 	IMAGE_SIZE = (args.image_size, args.image_size)
@@ -218,6 +213,7 @@ if __name__ == '__main__':
 	MODEL_PATH = args.model_path
 	AUG = args.augment_data
 	freeze = args.freeze_layers
+	DATA_SET = args.data_set
 
 	schedule = args.schedule
 	TARGET_FILE = args.target_file_path
@@ -226,16 +222,42 @@ if __name__ == '__main__':
 		from utils_resnet import *
 	elif ARCH == 'vgg':
 		from utils import *
-
+	else:
+		from utils_beans import *
 	with open(TARGET_FILE, 'r') as f:
 		targets = json.load(f)
 
 
-	dataset, info = tfds.load('cifar10', with_info=True)
-	test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-	test_dataset = test_dataset.batch(global_batch_size).repeat()
-	test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+	if DATA_SET != "bean_scrap":
+		dataset, info = tfds.load(DATA_SET, with_info=True)
+		options = tf.data.Options()
+		options.experimental_threading.max_intra_op_parallelism = 1
+		train = dataset['train'].with_options(options)
+		test = dataset['test'].with_options(options)
+	else:
+		dataset, info = tfds.load("beans", with_info=True)
+		options = tf.data.Options()
+		options.experimental_threading.max_intra_op_parallelism = 1
+		test = dataset['test'].with_options(options)
+		train = dataset['train'].with_options(options)	
+		list_ds = tf.data.Dataset.list_files(str('/tf/notebooks/bean_data/*/*'))
+		aug = list_ds.map(parse_image).cache()
+		train = aug.concatenate(train)
+		
+		
+	if AUG:
+		train = train.map(lambda x: load_image_train(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+	else:
+		train = train.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+		train = train.cache()
+		
+	train_dataset = train.shuffle(1000).batch(global_batch_size).repeat()
+	train_dataset = train_dataset.prefetch(buffer_size=2)
 
+	test_dataset = test.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
+	#test_dataset = test_dataset.cache()
+	test_dataset = test_dataset.batch(global_batch_size).repeat()
+	test_dataset = test_dataset.prefetch(buffer_size=2)
 
 	model = tf.keras.models.load_model(MODEL_PATH)
 
@@ -270,11 +292,11 @@ if __name__ == '__main__':
 	print(f"OG IS : {OG}\n")
 	print(my_layers)
 
-	targets = [train_layer(target, rank) for target in targets if target['layer'] in my_layers]
+	targets = [train_layer(target, train_dataset, test_dataset, rank) for target in targets if target['layer'] in my_layers]
 
 
 	targets = comm.gather(targets, root=0)
-
+	del train_dataset
 	if rank == 0:
 
 		tok = time.time()
@@ -294,10 +316,10 @@ if __name__ == '__main__':
 		with writer.as_default():
 			model.save('cifar10_resnet_modified.h5')
 			for target in targets[::-1]:
-
+				target['replaced'] = False
 				if OG[1] - target['score'][1] < 0.15:
 					print(f'replacing layer {target["name"]}')
-
+					target['replaced'] = True
 					layer_name = target['name']
 					layer_pos = target['layer']
 					filters = model.layers[layer_pos].output.shape[-1]
@@ -314,7 +336,7 @@ if __name__ == '__main__':
 				model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
 
 			tf.keras.backend.clear_session()
-
+			
 			test_dataset = dataset['test'].map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=tf.data.experimental.AUTOTUNE)
 			test_dataset = test_dataset.batch(global_batch_size).repeat()
 			test_dataset = test_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
@@ -324,12 +346,12 @@ if __name__ == '__main__':
 			else:
 				train = train.map(lambda x: load_image_test(x, IMAGE_SIZE, NUM_CLASSES), num_parallel_calls=4)
 				train = train.cache()
-			train_dataset = train.shuffle(buffer_size=4000).batch(global_batch_size).repeat()
+			train_dataset = train.batch(global_batch_size).repeat()
 			train_dataset = train_dataset.prefetch(buffer_size=2)
 
 			fine_tune_epochs = 60
 			lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-						.003,
+						.00063,
 						decay_steps= math.ceil(TRAIN_SIZE / global_batch_size / TEST ) * fine_tune_epochs // 3,
 						decay_rate=0.96,
 						staircase=False)
@@ -339,7 +361,7 @@ if __name__ == '__main__':
 			checkpoint = ModelCheckpoint('cifar10_resnet_modified_fine_tune.h5', monitor='val_accuracy', verbose=1, save_best_only=True)
 
 			model = tf.keras.models.load_model('cifar10_resnet_modified.h5')
-			model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="categorical_crossentropy", metrics=['accuracy'])
+			model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=.9, nesterov=True), loss="sparse_categorical_crossentropy", metrics=['accuracy'])
 			final = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
 			fine_tune = model.fit(
 								x=train_dataset,
@@ -353,7 +375,7 @@ if __name__ == '__main__':
 
 			model = tf.keras.models.load_model('cifar10_resnet_modified_fine_tune.h5')
 			final_fine_tune = model.evaluate(test_dataset, steps=math.ceil(VALIDATION_SIZE / global_batch_size / TEST))
-
+			
 			#new_model.save('cifar10_resnet_modified_fine_tune.h5')
 			tf.summary.scalar(name='model_acc', data=final[1], step=0)
 			tf.summary.scalar(name='model_loss', data=final[0], step=0)
@@ -362,7 +384,7 @@ if __name__ == '__main__':
 			tf.summary.scalar(name='model_loss_fine_tune', data=final_fine_tune[0], step=0)
 
 			if timing_path is not None:
-				timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank']} for target in targets]
+				timing_dump = [{'name': target['name'], 'layer': target['layer'], 'run_time': target['run_time'], 'rank': target['rank'], 'replaced': target['replaced'], 'score': target['score']} for target in targets]
 				timing_dump.append({'total_time': total_time})
 				timing_dump.append({'final_acc': final[1]})
 				timing_dump.append({'fine_tune_acc': final_fine_tune[1]})

@@ -1,0 +1,8 @@
+README.md
+setup.py
+blockwise/__init__.py
+blockwise/train_layer.py
+train_layer.egg-info/PKG-INFO
+train_layer.egg-info/SOURCES.txt
+train_layer.egg-info/dependency_links.txt
+train_layer.egg-info/top_level.txt
