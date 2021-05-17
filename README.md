@@ -1,4 +1,4 @@
-This repository is for our paper "Parallel Blockwise Knowledge Distillation for Deep Neural Network Compression"
+This repository is for our paper "Parallel Blockwise Knowledge Distillation for Deep Neural Network Compression" [link](https://arxiv.org/abs/2012.03096)
 
 A method for distributing blockwise compression of models accross many workers using Tensorflow and MPI
 
